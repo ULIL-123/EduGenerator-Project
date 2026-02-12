@@ -92,6 +92,10 @@
             0%, 100% { box-shadow: 0 0 15px rgba(14, 165, 233, 0.6), inset 0 0 8px rgba(255,255,255,0.2); border-color: #7dd3fc; }
             50% { box-shadow: 0 0 30px rgba(14, 165, 233, 1), inset 0 0 12px rgba(255,255,255,0.4); border-color: #bae6fd; }
         }
+        @keyframes loading-bar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(300%); }
+        }
         .animate-glow-blue { animation: glow-pulse-blue 2s infinite ease-in-out; }
         .animate-glow-sky { animation: glow-pulse-sky 2s infinite ease-in-out; }
 
@@ -141,8 +145,6 @@
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then(reg => {
                     console.log('SW registered:', reg.scope);
-                    
-                    // Logic to detect updates and force refresh
                     reg.onupdatefound = () => {
                         const installingWorker = reg.installing;
                         installingWorker.onstatechange = () => {
@@ -159,7 +161,6 @@
                 });
             });
 
-            // Handle multiple tabs/clients syncing
             let refreshing;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (refreshing) return;

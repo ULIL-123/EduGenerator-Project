@@ -18,6 +18,16 @@ const LITERASI_TOPICS = [
   "Teks Fiksi (Sastra)", "Teks Informasi (Faktual)", "Ide Pokok & Pendukung", "Simpulan & Interpretasi", "Ejaan & Tata Bahasa", "Kosakata & Sinonim", "Puisi & Majas", "Struktur Kalimat"
 ];
 
+const LOADING_MESSAGES = [
+  "Membangun Koneksi ke Brain-AI Core...",
+  "Menganalisis Standar Kurikulum Merdeka...",
+  "Menyusun Paket Literasi Fiksi & Informasi...",
+  "Mengonfigurasi Problem Solving Numerasi...",
+  "Menghasilkan Validasi Kunci Jawaban...",
+  "Menyiapkan Simulasi Standar ANBK...",
+  "Melakukan Finalisasi Paket Soal..."
+];
+
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const Logo3D = ({ size = "normal" }: { size?: "small" | "normal" | "large" }) => {
@@ -48,6 +58,7 @@ const App: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [userAnswers, setUserAnswers] = useState<Record<number, any>>({});
   const [loading, setLoading] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [resultsHistory, setResultsHistory] = useState<UserResult[]>([]);
   
@@ -68,6 +79,19 @@ const App: React.FC = () => {
     navigate('/');
   };
 
+  // Cycling loading messages
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (loading) {
+      interval = setInterval(() => {
+        setLoadingMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 2000);
+    } else {
+      setLoadingMsgIdx(0);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
+
   // Session Inactivity Timeout Logic
   useEffect(() => {
     if (!currentUser) return;
@@ -80,10 +104,8 @@ const App: React.FC = () => {
       }, SESSION_TIMEOUT_MS);
     };
 
-    // Initial start
     resetSessionTimer();
 
-    // Event listeners for activity
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     events.forEach(event => window.addEventListener(event, resetSessionTimer));
 
@@ -317,7 +339,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col pb-16">
-      <header className="bg-slate-900/60 backdrop-blur-2xl border-b-2 border-white/5 sticky top-0 z-50 no-print h-24">
+      <header className="bg-slate-950/60 backdrop-blur-3xl border-b-2 border-white/5 sticky top-0 z-50 no-print h-24">
         <div className="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate('/config')}>
             <Logo3D size="small" />
@@ -353,43 +375,62 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="grid md:grid-cols-2 gap-10">
-                   <div className="glass-card-3d p-10 rounded-[3rem] text-left border-blue-500/10">
-                      <h3 className="text-3xl font-black text-white mb-8 flex items-center gap-4"><span className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-lg">∑</span> NUMERASI</h3>
-                      <div className="grid grid-cols-1 gap-3">
+                   {/* Numerasi Section */}
+                   <div className="glass-card-3d p-10 rounded-[3rem] text-left border-blue-500/10 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM11 7H13V9H11V7ZM11 11H13V13H11V11ZM11 15H13V17H11V15ZM7 7H9V9H7V7ZM7 11H9V13H7V11ZM7 15H9V17H7V15ZM15 7H17V9H15V7ZM15 11H17V13H15V11ZM15 15H17V17H15V15Z"/></svg>
+                      </div>
+                      <h3 className="text-3xl font-black text-white mb-8 flex items-center gap-4 relative z-10"><span className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-500/30">∑</span> NUMERASI</h3>
+                      <div className="grid grid-cols-1 gap-4 relative z-10">
                         {NUMERASI_TOPICS.map(t => {
                           const isSelected = selectedTopics.math.includes(t);
                           return (
                             <button 
                               key={t} 
                               onClick={() => toggleTopic('math', t)} 
-                              className={`p-4 rounded-xl text-xs font-black transition-all duration-500 border-2 ${
+                              className={`group flex items-center justify-between p-5 rounded-2xl text-sm font-black transition-all duration-300 border-2 ${
                                 isSelected 
-                                  ? 'bg-blue-600 border-blue-300 text-white animate-glow-blue scale-105 z-10' 
-                                  : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:border-blue-800 opacity-40'
+                                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 border-blue-300 text-white shadow-[0_10px_20px_-5px_rgba(37,99,235,0.6)] scale-[1.02] z-10' 
+                                  : 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-blue-900/50 hover:bg-slate-800/80'
                               }`}
                             >
-                              {t}
+                              <span>{t}</span>
+                              {isSelected && (
+                                <div className="bg-white/20 p-1.5 rounded-lg animate-in zoom-in">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>
+                                </div>
+                              )}
                             </button>
                           );
                         })}
                       </div>
                    </div>
-                   <div className="glass-card-3d p-10 rounded-[3rem] text-left border-sky-500/10">
-                      <h3 className="text-3xl font-black text-white mb-8 flex items-center gap-4"><span className="w-10 h-10 bg-sky-500 rounded-lg flex items-center justify-center text-lg">¶</span> LITERASI</h3>
-                      <div className="grid grid-cols-1 gap-3">
+
+                   {/* Literasi Section */}
+                   <div className="glass-card-3d p-10 rounded-[3rem] text-left border-sky-500/10 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V4C20 2.9 19.1 2 18 2ZM18 20H6V4H18V20ZM16 11H8V9H16V11ZM16 15H8V13H16V15ZM13 19H8V17H13V19Z"/></svg>
+                      </div>
+                      <h3 className="text-3xl font-black text-white mb-8 flex items-center gap-4 relative z-10"><span className="w-12 h-12 bg-sky-500 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-sky-500/30">¶</span> LITERASI</h3>
+                      <div className="grid grid-cols-1 gap-4 relative z-10">
                         {LITERASI_TOPICS.map(t => {
                           const isSelected = selectedTopics.indonesian.includes(t);
                           return (
                             <button 
                               key={t} 
                               onClick={() => toggleTopic('indonesian', t)} 
-                              className={`p-4 rounded-xl text-xs font-black transition-all duration-500 border-2 ${
+                              className={`group flex items-center justify-between p-5 rounded-2xl text-sm font-black transition-all duration-300 border-2 ${
                                 isSelected 
-                                  ? 'bg-sky-500 border-sky-200 text-white animate-glow-sky scale-105 z-10' 
-                                  : 'bg-slate-800/40 border-slate-700 text-slate-500 hover:border-sky-800 opacity-40'
+                                  ? 'bg-gradient-to-r from-sky-500 to-blue-600 border-sky-200 text-white shadow-[0_10px_20px_-5px_rgba(14,165,233,0.6)] scale-[1.02] z-10' 
+                                  : 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-sky-900/50 hover:bg-slate-800/80'
                               }`}
                             >
-                              {t}
+                              <span>{t}</span>
+                              {isSelected && (
+                                <div className="bg-white/20 p-1.5 rounded-lg animate-in zoom-in">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>
+                                </div>
+                              )}
                             </button>
                           );
                         })}
@@ -398,20 +439,39 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="flex flex-col items-center pt-10 pb-20">
-                  {error && <p className="text-rose-400 font-black italic mb-6">{error}</p>}
-                  <button onClick={handleGenerate} className="w-full max-w-2xl btn-3d-blue text-white py-10 rounded-[2.5rem] font-black text-3xl tracking-widest flex items-center justify-center gap-6 group">
-                    GENERATE SOAL TKA
-                    <svg className="w-10 h-10 group-hover:translate-x-3 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                  {error && <p className="text-rose-400 font-black italic mb-6 animate-bounce">{error}</p>}
+                  <button 
+                    onClick={handleGenerate} 
+                    className="group relative w-full max-w-2xl btn-3d-blue text-white py-10 rounded-[2.5rem] font-black text-3xl tracking-widest flex items-center justify-center gap-6 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                    <span className="relative z-10">GENERATE SOAL TKA</span>
+                    <svg className="w-10 h-10 group-hover:translate-x-3 transition-transform relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
                   </button>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-8 opacity-40">Powered by Gemini 3 Flash Professional Infrastructure</p>
                 </div>
               </div>
             ) : (
-              <div className="py-40 text-center flex flex-col items-center animate-pulse">
-                 <div className="relative w-48 h-48 mb-12">
-                    <div className="absolute inset-0 border-[12px] border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <div className="absolute inset-6 bg-blue-600 rounded-full flex items-center justify-center text-white font-black text-[10px] px-2 text-center uppercase leading-tight shadow-lg">Academic Ability Test</div>
+              <div className="py-40 text-center flex flex-col items-center animate-in zoom-in duration-500">
+                 <div className="relative w-56 h-56 mb-16">
+                    <div className="absolute inset-0 border-[4px] border-blue-500/20 rounded-full"></div>
+                    <div className="absolute inset-0 border-[12px] border-blue-500 border-t-transparent rounded-full animate-spin shadow-[0_0_50px_rgba(37,99,235,0.4)]"></div>
+                    <div className="absolute inset-8 bg-blue-600 rounded-full flex flex-col items-center justify-center text-white shadow-2xl animate-pulse">
+                      <span className="font-black text-xs uppercase tracking-tighter">AI AGENT</span>
+                      <span className="font-black text-2xl tracking-tighter mt-1">CORE</span>
+                    </div>
                  </div>
-                 <h3 className="text-4xl font-black text-white italic">generate soal TKA...</h3>
+                 <div className="space-y-4">
+                    <h3 className="text-4xl font-black text-white italic tracking-tighter">Memproses Permintaan...</h3>
+                    <div className="h-8 overflow-hidden relative">
+                      <p className="text-blue-400 font-black text-lg uppercase tracking-widest animate-in slide-in-from-bottom duration-300" key={loadingMsgIdx}>
+                        {LOADING_MESSAGES[loadingMsgIdx]}
+                      </p>
+                    </div>
+                 </div>
+                 <div className="mt-20 w-full max-w-md h-1 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 animate-[loading-bar_4s_infinite_linear]" style={{ width: '40%' }}></div>
+                 </div>
               </div>
             )
           } />
