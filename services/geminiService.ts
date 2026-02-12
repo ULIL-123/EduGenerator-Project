@@ -59,14 +59,14 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
   const mathTopics = selectedTopics.math.length > 0 ? selectedTopics.math.join(", ") : "Bilangan, Aljabar, Geometri";
   const indTopics = selectedTopics.indonesian.length > 0 ? selectedTopics.indonesian.join(", ") : "Literasi Teks Informasi & Sastra";
 
-  // Prompt yang jauh lebih ketat untuk hasil profesional
+  // Prompt yang jauh lebih ketat untuk hasil profesional dengan jumlah 30 soal
   const prompt = `
     Anda adalah Pakar Asesmen Nasional (ANBK). 
-    Tugas: Buat 20 soal Tes Kemampuan Akademik (TKA) SD kelas 5-6 yang berkualitas tinggi.
+    Tugas: Buat 30 soal Tes Kemampuan Akademik (TKA) SD kelas 5-6 yang berkualitas tinggi.
     
     KOMPOSISI:
-    - 10 Soal Numerasi (Matematika) tentang: ${mathTopics}
-    - 10 Soal Literasi (Bahasa Indonesia) tentang: ${indTopics}
+    - 15 Soal Numerasi (Matematika) tentang: ${mathTopics}
+    - 15 Soal Literasi (Bahasa Indonesia) tentang: ${indTopics}
 
     ATURAN KETAT FORMAT JAWABAN:
     1. Jika 'Pilihan Ganda', 'correctAnswer' harus berupa satu huruf besar: "A" atau "B" dsb.
@@ -88,7 +88,7 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
         temperature: 0.4,
-        thinkingConfig: { thinkingBudget: 4000 } // Memberi waktu AI untuk memecahkan soal matematika dengan benar
+        thinkingConfig: { thinkingBudget: 6000 } // Budget ditingkatkan untuk 30 soal agar stabil
       }
     });
 

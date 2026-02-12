@@ -3,7 +3,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -25,6 +25,8 @@
             --dark-blue: #020617;
             --surface-blue: #0f172a;
             --accent-sky: #0ea5e9;
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
         }
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -33,6 +35,8 @@
             color: #f1f5f9;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+            padding-top: var(--safe-top);
+            padding-bottom: var(--safe-bottom);
         }
 
         /* Neural Background Orbs */
@@ -98,6 +102,15 @@
         @keyframes scan {
             0% { top: -5%; }
             100% { top: 105%; }
+        }
+
+        /* Mobile Optimization for App Look */
+        @media (max-width: 640px) {
+            .glass-card-3d { border-radius: 2rem !important; }
+            h1 { font-size: 3.5rem !important; }
+            h2 { font-size: 2.5rem !important; }
+            .p-16 { padding: 1.5rem !important; }
+            .p-12 { padding: 1.25rem !important; }
         }
 
         @media print { .no-print { display: none !important; } }
