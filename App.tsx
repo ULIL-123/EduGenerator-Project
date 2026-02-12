@@ -6,32 +6,34 @@ import { Question, TopicSelection, User, UserResult } from './types';
 import { QuestionCard } from './components/QuestionCard';
 
 const NUMERASI_TOPICS = [
-  "Bilangan & Operasi", "Aljabar Dasar", "Geometri Bangun Datar", "Geometri Bangun Ruang", "Pengukuran & Satuan", "Data & Statistik", "KPK & FPB", "Pecahan & Desimal", "Perbandingan & Skala"
+  "Bilangan & Operasi", "Aljabar Dasar", "Geometri", "Pengukuran", "Data & Statistik", "Pecahan", "KPK & FPB", "Logika Angka"
 ];
 
 const LITERASI_TOPICS = [
-  "Teks Fiksi (Sastra)", "Teks Informasi (Faktual)", "Ide Pokok & Pendukung", "Simpulan & Interpretasi", "Ejaan & Tata Bahasa", "Kosakata & Sinonim", "Puisi & Majas", "Struktur Kalimat"
+  "Teks Sastra", "Teks Informasi", "Ide Pokok", "Ejaan & Tata Bahasa", "Kosakata", "Struktur Kalimat", "Analisis Puisi"
 ];
 
-const LOADING_MESSAGES = [
-  "Sinkronisasi Brain-AI...",
-  "Menganalisis Kurikulum...",
-  "Menyusun Stimulus Literasi...",
-  "Memproses Numerasi Dasar...",
-  "Validasi Logika Soal...",
-  "Finalisasi Paket Asesmen..."
+const VERIFICATION_LOGS = [
+  "ESTABLISHING NEURAL LINK...",
+  "ACCESSING ACADEMIC DATABASE...",
+  "SYNCING CURRICULUM STANDARDS...",
+  "GENERATING DYNAMIC STIMULUS...",
+  "STRUCTURING ASSESSMENT MATRIX...",
+  "VALIDATING ANSWER PROTOCOLS...",
+  "ENCRYPTING SESSION DATA...",
+  "READY FOR DEPLOYMENT."
 ];
 
-const Logo3D = ({ size = "normal" }: { size?: "small" | "normal" | "large" }) => {
-  const dimensions = size === "small" ? "w-12 h-12" : size === "large" ? "w-44 h-44" : "w-24 h-24";
-  const fontSize = size === "small" ? "text-2xl" : size === "large" ? "text-7xl" : "text-5xl";
-  const rounding = size === "small" ? "rounded-xl" : "rounded-[3.5rem]";
-  
+const LogoElite = ({ size = "normal" }: { size?: "small" | "normal" | "large" }) => {
+  const dim = size === "small" ? "w-10 h-10" : size === "large" ? "w-48 h-48" : "w-28 h-28";
+  const font = size === "small" ? "text-xl" : size === "large" ? "text-7xl" : "text-5xl";
+  const rounded = size === "small" ? "rounded-xl" : "rounded-[3rem]";
   return (
-    <div className={`${dimensions} group cursor-default relative z-10 mx-auto`}>
-      <div className={`absolute inset-0 bg-blue-600/20 ${rounding} blur-2xl animate-pulse`}></div>
-      <div className={`absolute inset-0 bg-gradient-to-br from-blue-400 via-blue-700 to-slate-950 ${rounding} flex items-center justify-center text-white font-black shadow-2xl border border-white/20 backdrop-blur-xl`}>
-        <span className={`${fontSize} tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.6)] select-none`}>E</span>
+    <div className={`${dim} relative group mx-auto flex items-center justify-center`}>
+      <div className={`absolute inset-0 bg-blue-600/20 blur-3xl ${rounded} animate-pulse`}></div>
+      <div className={`absolute inset-0 bg-gradient-to-tr from-blue-700 via-indigo-900 to-slate-950 ${rounded} rotate-6 group-hover:rotate-12 transition-transform duration-700 shadow-2xl border border-white/10`}></div>
+      <div className={`absolute inset-0 bg-slate-950/40 backdrop-blur-xl ${rounded} border border-white/20 flex items-center justify-center shadow-inner`}>
+        <span className={`${font} font-black text-white tracking-tighter drop-shadow-2xl`}>ED</span>
       </div>
     </div>
   );
@@ -41,147 +43,179 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Inisialisasi sinkron untuk mencegah blank screen pada refresh
+  // Root State Initialization (Strict Persistence)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('edugen_user_session');
-      return (saved && saved !== "undefined") ? JSON.parse(saved) : null;
-    } catch { return null; }
+    const saved = localStorage.getItem('edugen_session_v5');
+    return saved ? JSON.parse(saved) : null;
   });
 
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
-  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authForm, setAuthForm] = useState({ user: '', pass: '' });
   
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [userAnswers, setUserAnswers] = useState<Record<number, any>>({});
-  const [loading, setLoading] = useState(false);
-  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [resultsHistory, setResultsHistory] = useState<UserResult[]>(() => {
-    try {
-      const saved = localStorage.getItem('edugen_exam_history');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    const saved = sessionStorage.getItem('edugen_active_exam');
+    return saved ? JSON.parse(saved) : [];
   });
   
-  const [timeLeft, setTimeLeft] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const [selectedTopics, setSelectedTopics] = useState<TopicSelection>({
-    math: ["Bilangan & Operasi", "Pecahan & Desimal"],
-    indonesian: ["Teks Fiksi (Sastra)", "Ejaan & Tata Bahasa"]
+  const [userAnswers, setUserAnswers] = useState<Record<number, any>>(() => {
+    const saved = sessionStorage.getItem('edugen_answers');
+    return saved ? JSON.parse(saved) : {};
   });
 
-  // Animasi Loading
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStep, setSyncStep] = useState(0);
+  const [sysError, setSysError] = useState<string | null>(null);
+  
+  const [history, setHistory] = useState<UserResult[]>(() => {
+    const saved = localStorage.getItem('edugen_history_v5');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = sessionStorage.getItem('edugen_time');
+    return saved ? parseInt(saved) : 0;
+  });
+  const timerId = useRef<any>(null);
+
+  const [topics, setTopics] = useState<TopicSelection>({
+    math: ["Bilangan & Operasi", "Pecahan"],
+    indonesian: ["Teks Sastra", "Ide Pokok"]
+  });
+
+  // Sync Timer for UI
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (loading) {
-      interval = setInterval(() => {
-        setLoadingMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
-      }, 1500);
+    let itv: any;
+    if (isSyncing) {
+      itv = setInterval(() => setSyncStep(s => (s + 1) % VERIFICATION_LOGS.length), 1000);
     }
-    return () => clearInterval(interval);
-  }, [loading]);
+    return () => clearInterval(itv);
+  }, [isSyncing]);
 
-  // Timer Control
+  // Exam Logic with Persistence
   useEffect(() => {
     if (location.pathname === '/exam' && timeLeft > 0) {
-      timerRef.current = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+      timerId.current = setInterval(() => {
+        setTimeLeft(t => {
+          const next = t - 1;
+          sessionStorage.setItem('edugen_time', next.toString());
+          return next;
+        });
+      }, 1000);
     } else if (location.pathname === '/exam' && timeLeft === 0 && questions.length > 0) {
-      calculateScore();
+      finalizeExam();
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => clearInterval(timerId.current);
   }, [location.pathname, timeLeft]);
+
+  // Persistence triggers
+  useEffect(() => {
+    if (questions.length > 0) sessionStorage.setItem('edugen_active_exam', JSON.stringify(questions));
+    sessionStorage.setItem('edugen_answers', JSON.stringify(userAnswers));
+  }, [questions, userAnswers]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    const users = JSON.parse(localStorage.getItem('edugen_registered_users') || '[]');
-
-    if (authView === 'register') {
-      if (!authForm.username || !authForm.password) { setError("Harap lengkapi formulir."); return; }
-      if (users.some((u: any) => u.username === authForm.username)) { setError("Username sudah terdaftar."); return; }
-      users.push({ ...authForm });
-      localStorage.setItem('edugen_registered_users', JSON.stringify(users));
-      setAuthView('login');
-      alert("Registrasi Berhasil!");
+    setSysError(null);
+    const registry = JSON.parse(localStorage.getItem('edugen_registry_v5') || '[]');
+    
+    if (authMode === 'register') {
+      if (!authForm.user || !authForm.pass) return setSysError("Complete credentials required.");
+      if (registry.some((u: any) => u.user === authForm.user)) return setSysError("Node ID already assigned.");
+      registry.push(authForm);
+      localStorage.setItem('edugen_registry_v5', JSON.stringify(registry));
+      setAuthMode('login');
+      alert("Registration Validated.");
     } else {
-      const user = users.find((u: any) => u.username === authForm.username && u.password === authForm.password);
-      if (user) {
-        setCurrentUser(user);
-        localStorage.setItem('edugen_user_session', JSON.stringify(user));
+      const match = registry.find((u: any) => u.user === authForm.user && u.pass === authForm.pass);
+      if (match) {
+        const session = { username: match.user, phone: '' };
+        setCurrentUser(session);
+        localStorage.setItem('edugen_session_v5', JSON.stringify(session));
         navigate('/config');
-      } else { setError("Kredensial tidak valid."); }
+      } else { setSysError("Invalid Credentials Protocol."); }
     }
   };
 
-  const handleGenerate = async () => {
-    if (loading) return;
-    setLoading(true); 
-    setError(null);
+  const startGeneration = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setSysError(null);
     setUserAnswers({});
+    sessionStorage.removeItem('edugen_answers');
     
     try {
-      const result = await generateTKAQuestions(selectedTopics);
-      if (result && result.length > 0) {
-        setQuestions(result);
-        setTimeLeft(45 * 60); // 45 Menit Standard
-        setLoading(false);
-        navigate('/exam');
-      } else {
-        throw new Error("Gagal memuat soal.");
-      }
+      const data = await generateTKAQuestions(topics);
+      if (data && data.length > 0) {
+        setQuestions(data);
+        const initialTime = 45 * 60; // 45 Minutes Standard
+        setTimeLeft(initialTime);
+        sessionStorage.setItem('edugen_time', initialTime.toString());
+        
+        setTimeout(() => {
+          setIsSyncing(false);
+          navigate('/exam');
+        }, 800);
+      } else { throw new Error("Data Integrity Fail: Null Set"); }
     } catch (err) {
-      console.error(err);
-      setError("AI sedang sibuk atau koneksi terputus. Silakan coba lagi.");
-      setLoading(false);
+      setSysError("AI Core Latency Error. Please re-initialize.");
+      setIsSyncing(false);
     }
   };
 
-  const calculateScore = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+  const finalizeExam = () => {
+    clearInterval(timerId.current);
     let correct = 0;
-    questions.forEach((q, idx) => {
-      if (JSON.stringify(userAnswers[idx]) === JSON.stringify(q.correctAnswer)) correct++;
+    questions.forEach((q, i) => {
+      if (JSON.stringify(userAnswers[i]) === JSON.stringify(q.correctAnswer)) correct++;
     });
     const score = Math.round((correct / questions.length) * 100);
-    const newResult = {
+    const res = {
       username: currentUser?.username || 'Guest',
       score,
       totalQuestions: questions.length,
       correctCount: correct,
       date: new Date().toLocaleString('id-ID'),
-      topics: [...selectedTopics.math, ...selectedTopics.indonesian]
+      topics: [...topics.math, ...topics.indonesian]
     };
-    const updatedHistory = [newResult, ...resultsHistory];
-    setResultsHistory(updatedHistory);
-    localStorage.setItem('edugen_exam_history', JSON.stringify(updatedHistory));
+    const newHistory = [res, ...history];
+    setHistory(newHistory);
+    localStorage.setItem('edugen_history_v5', JSON.stringify(newHistory));
+    sessionStorage.removeItem('edugen_active_exam');
+    sessionStorage.removeItem('edugen_answers');
+    sessionStorage.removeItem('edugen_time');
     navigate('/result');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('edugen_user_session');
-    setCurrentUser(null);
-    navigate('/');
+  const toggleTopic = (cat: 'math' | 'indonesian', val: string) => {
+    setTopics(prev => ({
+      ...prev,
+      [cat]: prev[cat].includes(val) ? prev[cat].filter(x => x !== val) : [...prev[cat], val]
+    }));
   };
 
-  // UI GUARD
   if (!currentUser) return (
-    <div className="min-h-screen flex items-center justify-center p-6 animate-in fade-in duration-500">
-      <div className="max-w-xl w-full">
-        <div className="glass-card-3d rounded-[4rem] p-16 text-center relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 overflow-hidden relative">
+      <div className="orb orb-1 opacity-20"></div>
+      <div className="max-w-md w-full relative z-10">
+        <div className="glass-card-3d rounded-[4rem] p-16 text-center border-white/5 relative">
           <div className="scanline"></div>
-          <Logo3D size="large" />
-          <h1 className="text-6xl font-black text-white tracking-tighter italic mt-10">EduGen <span className="text-blue-500">TKA.</span></h1>
-          <form onSubmit={handleAuth} className="mt-12 space-y-5">
-            <input type="text" placeholder="ID Terminal" className="w-full px-10 py-6 rounded-3xl input-cyber text-white font-bold text-lg outline-none" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
-            <input type="password" placeholder="Kode Akses" className="w-full px-10 py-6 rounded-3xl input-cyber text-white font-bold text-lg outline-none" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-            {error && <p className="text-rose-500 font-bold text-xs uppercase tracking-widest">{error}</p>}
-            <button type="submit" className="w-full btn-3d-blue text-white py-6 rounded-3xl font-black text-2xl uppercase mt-4">Initialize System</button>
+          <LogoElite size="large" />
+          <h1 className="text-6xl font-black text-white mt-10 tracking-tighter italic">EduGen <span className="text-blue-500">TKA.</span></h1>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mt-3 mb-12">Certified Assessment V.5.0</p>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="relative">
+              <input type="text" placeholder="Terminal ID" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.user} onChange={e => setAuthForm({...authForm, user: e.target.value})} />
+            </div>
+            <div className="relative">
+              <input type="password" placeholder="Access Code" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.pass} onChange={e => setAuthForm({...authForm, pass: e.target.value})} />
+            </div>
+            {sysError && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest animate-bounce">{sysError}</p>}
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-[0.2em] text-lg">Initialize</button>
           </form>
-          <button onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')} className="mt-8 text-[11px] font-black text-slate-500 hover:text-blue-400 uppercase tracking-widest">
-            {authView === 'login' ? 'Register New Node' : 'Return to Login'}
+          
+          <button onClick={() => { setAuthMode(m => m === 'login' ? 'register' : 'login'); setSysError(null); }} className="mt-10 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] hover:text-blue-400 transition-colors">
+            {authMode === 'login' ? '>> Register New Node' : '<< Back to Auth'}
           </button>
         </div>
       </div>
@@ -189,140 +223,178 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="bg-slate-950/80 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-50 h-24">
-        <div className="max-w-7xl mx-auto px-8 h-full flex items-center justify-between">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => navigate('/config')}>
-            <Logo3D size="small" />
-            <span className="text-3xl font-black text-white tracking-tighter">EduGen</span>
-          </div>
-          <nav className="flex items-center gap-8">
-            <NavLink to="/config" className={({ isActive }) => `text-[11px] font-black uppercase tracking-widest ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>Config</NavLink>
-            <NavLink to="/history" className={({ isActive }) => `text-[11px] font-black uppercase tracking-widest ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>Logs</NavLink>
-            <button onClick={handleLogout} className="bg-slate-900 px-5 py-2 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:bg-blue-600 hover:text-white transition-all">Exit</button>
-          </nav>
+    <div className="min-h-screen bg-slate-950 flex flex-col font-['Plus_Jakarta_Sans']">
+      <header className="h-24 bg-slate-900/40 backdrop-blur-3xl border-b border-white/5 sticky top-0 z-[60] flex items-center justify-between px-12">
+        <div className="flex items-center gap-5 cursor-pointer group" onClick={() => navigate('/config')}>
+          <LogoElite size="small" />
+          <span className="text-3xl font-black text-white tracking-tighter group-hover:text-blue-400 transition-colors">EduGen</span>
         </div>
+        <nav className="flex items-center gap-10">
+          <NavLink to="/config" className={({isActive}) => `text-[11px] font-black uppercase tracking-[0.3em] transition-all ${isActive ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-500 hover:text-white'}`}>Config</NavLink>
+          <NavLink to="/history" className={({isActive}) => `text-[11px] font-black uppercase tracking-[0.3em] transition-all ${isActive ? 'text-blue-400 border-b-2 border-blue-500 pb-1' : 'text-slate-500 hover:text-white'}`}>Logs</NavLink>
+          <button onClick={() => { localStorage.removeItem('edugen_session_v5'); setCurrentUser(null); navigate('/'); }} className="bg-slate-950 px-6 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase text-rose-500 hover:bg-rose-500 hover:text-white transition-all">Logout</button>
+        </nav>
       </header>
 
-      <main className="flex-grow max-w-7xl mx-auto w-full px-8 pt-12 relative">
-        {loading && (
-          <div className="fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-3xl flex items-center justify-center p-8 animate-in fade-in duration-300">
-            <div className="text-center">
-               <div className="relative w-72 h-72 mx-auto mb-16">
-                  <div className="absolute inset-0 border-[15px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <div className="absolute inset-8 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl">
-                    <span className="font-black text-white text-4xl">AI</span>
-                  </div>
-               </div>
-               <h3 className="text-6xl font-black text-white italic tracking-tighter mb-4">Processing...</h3>
-               <p className="text-blue-400 font-black text-2xl uppercase tracking-widest animate-pulse" key={loadingMsgIdx}>
-                 {LOADING_MESSAGES[loadingMsgIdx]}
-               </p>
+      <main className="flex-grow max-w-7xl mx-auto w-full px-8 py-16 relative">
+        {isSyncing && (
+          <div className="fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-3xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+            <div className="relative w-80 h-80 flex items-center justify-center">
+              <div className="absolute inset-0 border-[12px] border-blue-600/10 rounded-full"></div>
+              <div className="absolute inset-0 border-[12px] border-blue-500 border-t-transparent rounded-full animate-spin shadow-[0_0_50px_rgba(37,99,235,0.3)]"></div>
+              <div className="absolute inset-10 bg-slate-900 rounded-full flex flex-col items-center justify-center shadow-3xl">
+                <span className="text-5xl font-black text-blue-500 tracking-tighter">AI-CORE</span>
+              </div>
+            </div>
+            <div className="mt-16 text-center space-y-4">
+              <p className="text-4xl font-black text-white italic tracking-tighter animate-pulse">{VERIFICATION_LOGS[syncStep]}</p>
+              <div className="w-96 h-2 bg-slate-900 mx-auto rounded-full overflow-hidden border border-white/5">
+                <div className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 animate-[loading-bar_3s_infinite_linear]" style={{width: '60%'}}></div>
+              </div>
+              <div className="pt-4 text-[10px] font-black text-slate-600 uppercase tracking-[0.5em]">Establishing Secure Assessment Bundle</div>
             </div>
           </div>
         )}
 
-        <div className={loading ? 'opacity-0' : 'opacity-100 transition-opacity duration-500'}>
+        <div className={isSyncing ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 transition-all duration-700'}>
           <Routes>
-            <Route path="/" element={<Navigate to="/config" replace />} />
             <Route path="/config" element={
-              <div className="max-w-5xl mx-auto space-y-16 animate-in slide-in-from-bottom duration-700">
-                <div className="text-center">
-                  <h2 className="text-8xl font-black text-white tracking-tighter mb-4">Modul <span className="text-blue-500">TKA.</span></h2>
-                  <p className="text-slate-500 font-black uppercase tracking-[0.5em]">Generator Soal Standar ANBK</p>
+              <div className="max-w-6xl mx-auto space-y-20 animate-in slide-in-from-bottom duration-1000">
+                <div className="text-center relative">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600/10 text-blue-500 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border border-blue-500/20">System Verified • Genesis Module</div>
+                  <h2 className="text-8xl font-black text-white tracking-tighter mt-8 italic">Simulation <span className="text-blue-500">Suite.</span></h2>
+                  <p className="text-slate-500 font-black uppercase tracking-[0.6em] text-sm mt-4">Next-Generation Assessment Engine</p>
                 </div>
-                
+
                 <div className="grid md:grid-cols-2 gap-12">
-                   {[{ title: 'NUMERASI', key: 'math', topics: NUMERASI_TOPICS, color: 'blue' }, 
-                     { title: 'LITERASI', key: 'indonesian', topics: LITERASI_TOPICS, color: 'sky' }].map(sub => (
-                     <div key={sub.key} className="glass-card-3d p-12 rounded-[4rem]">
-                        <h3 className={`text-3xl font-black text-white mb-10 text-${sub.color}-500`}>{sub.title}</h3>
-                        <div className="flex flex-col gap-4">
-                          {sub.topics.map(t => (
-                            <button key={t} onClick={() => setSelectedTopics(p => ({...p, [sub.key]: p[sub.key as keyof TopicSelection].includes(t) ? p[sub.key as keyof TopicSelection].filter(x=>x!==t) : [...p[sub.key as keyof TopicSelection], t]}))} 
-                                    className={`p-6 rounded-[2.5rem] text-sm font-black text-left transition-all border-2 ${selectedTopics[sub.key as keyof TopicSelection].includes(t) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}>
-                              {t}
-                            </button>
-                          ))}
-                        </div>
-                     </div>
-                   ))}
+                  <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-blue-500/30">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 text-blue-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg></div>
+                    <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
+                      <span className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-blue-500/30">∑</span> NUMERACY
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      {NUMERASI_TOPICS.map(t => (
+                        <button key={t} onClick={() => toggleTopic('math', t)} className={`p-6 rounded-[2rem] text-left font-black text-base border-2 transition-all duration-300 ${topics.math.includes(t) ? 'bg-gradient-to-br from-blue-600 to-blue-800 border-blue-400 text-white shadow-xl -translate-y-1' : 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700'}`}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-indigo-500/30">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5-1.17 0-2.39.15-3.5.5V19c1.11-.35 2.33-.5 3.5-.5 1.95 0 4.05.4 5.5 1.5 1.45-1.1 3.55-1.5 5.5-1.5 1.17 0 2.39.15 3.5.5V5z"/></svg></div>
+                    <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
+                      <span className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-indigo-500/30">¶</span> LITERACY
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      {LITERASI_TOPICS.map(t => (
+                        <button key={t} onClick={() => toggleTopic('indonesian', t)} className={`p-6 rounded-[2rem] text-left font-black text-base border-2 transition-all duration-300 ${topics.indonesian.includes(t) ? 'bg-gradient-to-br from-indigo-600 to-indigo-800 border-indigo-400 text-white shadow-xl -translate-y-1' : 'bg-slate-900/50 border-slate-800 text-slate-500 hover:border-slate-700'}`}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="text-center pb-20">
-                  <button onClick={handleGenerate} className="w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter">GENERATE SOAL</button>
-                  {error && <p className="mt-8 text-rose-500 font-black uppercase tracking-widest">{error}</p>}
+
+                <div className="text-center pt-10 pb-32">
+                  <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all">
+                    GENERATE SYSTEM <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
+                  </button>
+                  {sysError && <p className="mt-10 text-rose-500 font-black uppercase text-xs tracking-[0.4em] animate-bounce">{sysError}</p>}
                 </div>
               </div>
             } />
 
             <Route path="/exam" element={
               questions.length > 0 ? (
-                <div className="max-w-4xl mx-auto pb-40 animate-in fade-in duration-700">
-                   <div className="glass-card-3d p-8 rounded-[3rem] sticky top-28 z-40 flex items-center justify-between mb-16 shadow-2xl">
-                      <div>
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Time Remaining</p>
-                        <p className="text-3xl font-black text-blue-400 font-mono">{Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2, '0')}</p>
+                <div className="max-w-5xl mx-auto pb-64 animate-in fade-in duration-1000">
+                  <div className="glass-card-3d p-8 rounded-[3.5rem] sticky top-28 z-[55] flex items-center justify-between mb-16 shadow-3xl border-blue-500/20 bg-slate-950/80 backdrop-blur-2xl">
+                    <div className="flex items-center gap-8">
+                      <div className="bg-slate-900 rounded-3xl p-5 border border-white/5 shadow-inner">
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em]">Node Connection Stability</p>
+                        <p className="text-4xl font-black text-blue-400 font-mono tracking-tighter mt-1">{Math.floor(timeLeft/60)}:{(timeLeft%60).toString().padStart(2, '0')}</p>
                       </div>
-                      <div className="flex items-center gap-10">
-                        <div className="text-right">
-                          <p className="text-[10px] font-black text-slate-500 uppercase">Progress</p>
-                          <p className="text-xl font-black text-white">{Object.keys(userAnswers).length} / {questions.length}</p>
-                        </div>
-                        <button onClick={calculateScore} className="btn-3d-blue px-10 py-4 rounded-2xl font-black text-sm uppercase text-white">Selesai</button>
+                    </div>
+                    <div className="flex items-center gap-12">
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Assessment Progress</p>
+                        <p className="text-3xl font-black text-white tracking-tighter">{Object.keys(userAnswers).length} / {questions.length}</p>
                       </div>
-                   </div>
-                   <div className="space-y-16">
-                      {questions.map((q, i) => (
-                        <QuestionCard key={i} index={i} question={q} showAnswers={false} interactive={true} currentAnswer={userAnswers[i]} onAnswerChange={(ans) => setUserAnswers({...userAnswers, [i]: ans})} />
-                      ))}
-                   </div>
+                      <button onClick={finalizeExam} className="bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all border border-blue-400/40">Finalize Session</button>
+                    </div>
+                  </div>
+                  <div className="space-y-16">
+                    {questions.map((q, i) => (
+                      <QuestionCard key={i} index={i} question={q} showAnswers={false} interactive={true} currentAnswer={userAnswers[i]} onAnswerChange={(ans) => setUserAnswers({...userAnswers, [i]: ans})} />
+                    ))}
+                  </div>
                 </div>
               ) : <Navigate to="/config" />
             } />
 
             <Route path="/result" element={
-              questions.length > 0 ? (
-                <div className="max-w-5xl mx-auto space-y-16 pb-40 animate-in zoom-in duration-500">
-                   <div className="glass-card-3d p-20 rounded-[5rem] text-center">
-                      <div className="w-48 h-48 rounded-[3rem] bg-blue-600 flex flex-col items-center justify-center text-white shadow-3xl mx-auto mb-10 transform -rotate-3">
-                         <span className="text-sm font-black opacity-60">SCORE</span>
-                         <span className="text-8xl font-black tracking-tighter">{resultsHistory[0]?.score || 0}</span>
-                      </div>
-                      <h2 className="text-6xl font-black text-white italic tracking-tighter mb-10">Simulasi Selesai.</h2>
-                      <button onClick={() => navigate('/config')} className="btn-3d-blue px-16 py-6 rounded-[2.5rem] font-black text-2xl uppercase text-white">Coba Lagi</button>
-                   </div>
-                   <div className="space-y-12">
-                      <h3 className="text-4xl font-black text-white text-center">Analisis Jawaban</h3>
-                      {questions.map((q, i) => (
-                        <QuestionCard key={i} index={i} question={q} showAnswers={true} interactive={false} currentAnswer={userAnswers[i]} />
-                      ))}
-                   </div>
+              history.length > 0 ? (
+                <div className="max-w-5xl mx-auto space-y-20 pb-40 animate-in zoom-in duration-700">
+                  <div className="glass-card-3d p-20 rounded-[5rem] text-center border-emerald-500/20 relative overflow-hidden">
+                    <div className="scanline"></div>
+                    <div className="w-52 h-52 bg-gradient-to-tr from-emerald-600 to-teal-900 rounded-[3rem] rotate-6 flex flex-col items-center justify-center text-white shadow-3xl mx-auto mb-12 border-8 border-slate-950 outline outline-4 outline-emerald-500/20">
+                      <span className="text-[12px] font-black opacity-60 tracking-widest">VERIFIED SCORE</span>
+                      <span className="text-9xl font-black tracking-tighter drop-shadow-2xl">{history[0]?.score || 0}</span>
+                    </div>
+                    <h2 className="text-7xl font-black text-white italic tracking-tighter mb-10">Analysis Complete.</h2>
+                    <div className="flex justify-center gap-6">
+                      <button onClick={() => navigate('/config')} className="bg-blue-600 hover:bg-blue-500 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-blue-400/30">INITIALIZE NEW PROTOCOL</button>
+                    </div>
+                  </div>
+                  <div className="space-y-16 pt-20 border-t border-white/5">
+                    <h3 className="text-5xl font-black text-white text-center italic tracking-tighter">System Analytics & Log Review</h3>
+                    {questions.length > 0 ? questions.map((q, i) => (
+                      <QuestionCard key={i} index={i} question={q} showAnswers={true} interactive={false} currentAnswer={userAnswers[i]} />
+                    )) : history[0] && <div className="text-center text-slate-500 italic">Historical data review active.</div>}
+                  </div>
                 </div>
               ) : <Navigate to="/config" />
             } />
 
             <Route path="/history" element={
-              <div className="glass-card-3d p-16 rounded-[4rem] max-w-4xl mx-auto animate-in slide-in-from-bottom">
-                 <h2 className="text-5xl font-black text-white italic mb-12 tracking-tighter">Riwayat Sesi</h2>
-                 {resultsHistory.length === 0 ? <p className="text-slate-600 font-bold py-10 text-center">Belum ada data riwayat.</p> : (
-                   <div className="space-y-4">
-                      {resultsHistory.map((res, i) => (
-                        <div key={i} className="bg-slate-900/40 p-8 rounded-[2rem] border border-white/5 flex items-center justify-between">
-                           <div>
-                             <p className="font-black text-xl text-white">{res.date}</p>
-                             <p className="text-xs font-black text-blue-500 uppercase tracking-widest">{res.correctCount} / {res.totalQuestions} Benar</p>
-                           </div>
-                           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-xl">{res.score}</div>
+              <div className="glass-card-3d p-16 rounded-[4rem] max-w-5xl mx-auto animate-in slide-in-from-bottom duration-700 border-white/5">
+                <div className="flex items-center justify-between mb-16">
+                  <h2 className="text-5xl font-black text-white italic tracking-tighter">Archive Node Logs</h2>
+                  <div className="px-5 py-2 rounded-full bg-slate-900 border border-white/5 text-[10px] font-black text-blue-500 uppercase tracking-widest">System Online</div>
+                </div>
+                {history.length === 0 ? <p className="text-slate-700 font-bold py-32 text-center uppercase tracking-[0.5em] text-sm">Database Empty • No entries recorded.</p> : (
+                  <div className="space-y-6">
+                    {history.map((h, i) => (
+                      <div key={i} className="bg-slate-900/60 p-10 rounded-[2.5rem] border border-white/5 flex items-center justify-between group hover:border-blue-500/40 transition-all duration-500">
+                        <div>
+                          <p className="font-black text-2xl text-white tracking-tight">{h.date}</p>
+                          <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mt-3">{h.correctCount} / {h.totalQuestions} Competency Success Hits</p>
+                          <div className="flex gap-2 mt-4 flex-wrap">
+                            {h.topics.slice(0, 3).map((t, idx) => (
+                              <span key={idx} className="bg-slate-950 px-3 py-1 rounded-lg text-[8px] font-black text-slate-500 uppercase border border-white/5">{t}</span>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                   </div>
-                 )}
+                        <div className="w-24 h-24 bg-gradient-to-tr from-blue-700 to-indigo-900 border-4 border-slate-950 rounded-[2rem] flex items-center justify-center font-black text-4xl text-white shadow-2xl group-hover:scale-110 transition-transform">{h.score}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             } />
+            <Route path="*" element={<Navigate to="/config" />} />
           </Routes>
         </div>
       </main>
+      
+      <footer className="no-print border-t border-white/5 bg-slate-950/80 backdrop-blur-xl py-12 px-10 text-center">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="text-left">
+            <p className="text-xl font-black text-white tracking-tighter italic">EduGen <span className="text-blue-500">TKA.</span></p>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">Digital Assessment Verified System v5.0.2</p>
+          </div>
+          <div className="flex gap-10">
+            <div className="text-center"><p className="text-xs font-black text-white">2.5k+</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Tests Sync</p></div>
+            <div className="text-center"><p className="text-xs font-black text-white">99.9%</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Uptime AI</p></div>
+            <div className="text-center"><p className="text-xs font-black text-white">4.120</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Kernel V</p></div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
