@@ -1,60 +1,89 @@
 
-const CACHE_NAME = 'edugen-v1.0.1';
-const ASSETS_TO_CACHE = [
+const CACHE_NAME = 'edugen-pro-v5.2.0';
+const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  'https://cdn-icons-png.flaticon.com/512/5832/5832416.png'
+  'https://cdn-icons-png.flaticon.com/512/5832/5832416.png',
+  'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
 ];
 
-// Install Event - Caching basic assets
+// External libraries to cache
+const EXTERNAL_LIBS = [
+  'https://cdn.tailwindcss.com',
+  'https://esm.sh/react@^19.2.4',
+  'https://esm.sh/react-dom@^19.2.4/',
+  'https://esm.sh/@google/genai@^1.40.0',
+  'https://esm.sh/recharts@^3.7.0',
+  'https://esm.sh/react-router-dom@^7.2.0'
+];
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log('[SW] Pre-caching static assets and libraries');
+      return cache.addAll([...STATIC_ASSETS, ...EXTERNAL_LIBS]);
     })
   );
 });
 
-// Activate Event - Cleaning up old caches to ensure version sync
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      self.clients.claim(), // Become the active sw for all clients immediately
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              console.log('Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Removing legacy cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-// Fetch Event - Network first strategy for index.html to avoid stale versions
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  
-  // For navigation requests (like index.html), try network first
-  if (event.request.mode === 'navigate') {
+
+  // Network-First strategy for the main application shell
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html')) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('./index.html');
-      })
+      fetch(event.request)
+        .then((response) => {
+          const clonedResponse = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // For other assets, use Cache First, but update in background
+  // Cache-First strategy for fonts, images, and external libraries
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Return cached, but update in background for next time
+        fetch(event.request).then((networkResponse) => {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+        }).catch(() => {});
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          // If it's an external library from esm.sh or cdn, we still want to cache it
+          if (url.origin.includes('esm.sh') || url.origin.includes('tailwindcss.com') || url.origin.includes('gstatic.com')) {
+             const clonedResponse = networkResponse.clone();
+             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+          }
+          return networkResponse;
+        }
+        const clonedResponse = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clonedResponse));
+        return networkResponse;
+      });
     })
   );
 });

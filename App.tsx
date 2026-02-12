@@ -49,6 +49,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
   const [authForm, setAuthForm] = useState({ user: '', pass: '', phone: '' });
   const [recoveryPhone, setRecoveryPhone] = useState('');
@@ -78,6 +79,17 @@ const App: React.FC = () => {
     return saved ? parseInt(saved) : 0;
   });
   const timerId = useRef<any>(null);
+
+  // Online/Offline Detection
+  useEffect(() => {
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
 
   // Attempt Tracking: Check if user has already completed an exam
   const hasAlreadyAttempted = useMemo(() => {
@@ -120,7 +132,9 @@ const App: React.FC = () => {
 
   // Persistence triggers
   useEffect(() => {
-    if (questions.length > 0) sessionStorage.setItem('edugen_active_exam', JSON.stringify(questions));
+    if (questions.length > 0) {
+      sessionStorage.setItem('edugen_active_exam', JSON.stringify(questions));
+    }
     sessionStorage.setItem('edugen_answers', JSON.stringify(userAnswers));
   }, [questions, userAnswers]);
 
@@ -164,6 +178,10 @@ const App: React.FC = () => {
   };
 
   const startGeneration = async () => {
+    if (!isOnline) {
+      setSysError("OFFLINE: Connection required for AI Synthesis.");
+      return;
+    }
     if (isSyncing || hasAlreadyAttempted) return;
     setIsSyncing(true);
     setSysError(null);
@@ -207,6 +225,8 @@ const App: React.FC = () => {
     const newHistory = [res, ...history];
     setHistory(newHistory);
     localStorage.setItem('edugen_history_v5', JSON.stringify(newHistory));
+    
+    // Clear exam cache only after successful history update
     sessionStorage.removeItem('edugen_active_exam');
     sessionStorage.removeItem('edugen_answers');
     sessionStorage.removeItem('edugen_time');
@@ -214,7 +234,7 @@ const App: React.FC = () => {
   };
 
   const toggleTopic = (cat: 'math' | 'indonesian', val: string) => {
-    if (hasAlreadyAttempted) return; // Disable changes if attempted
+    if (hasAlreadyAttempted) return; 
     const current = topicHistory[historyIndex];
     const nextTopics = {
       ...current,
@@ -223,24 +243,16 @@ const App: React.FC = () => {
         : [...current[cat], val]
     };
     
-    // Create new history branch
     const newHistory = topicHistory.slice(0, historyIndex + 1);
     newHistory.push(nextTopics);
-    
-    // Limit history size to 30 for performance
     if (newHistory.length > 30) newHistory.shift();
     
     setTopicHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
 
-  const undo = () => {
-    if (historyIndex > 0) setHistoryIndex(historyIndex - 1);
-  };
-
-  const redo = () => {
-    if (historyIndex < topicHistory.length - 1) setHistoryIndex(historyIndex + 1);
-  };
+  const undo = () => { if (historyIndex > 0) setHistoryIndex(historyIndex - 1); };
+  const redo = () => { if (historyIndex < topicHistory.length - 1) setHistoryIndex(historyIndex + 1); };
 
   if (!currentUser) return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 overflow-hidden relative">
@@ -304,7 +316,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col font-['Plus_Jakarta_Sans']">
-      <header className="h-24 bg-slate-900/40 backdrop-blur-3xl border-b border-white/5 sticky top-0 z-[60] flex items-center justify-between px-12">
+      {/* Dynamic Connectivity Notification */}
+      {!isOnline && (
+        <div className="bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.5em] py-2 text-center animate-pulse z-[100] fixed top-0 w-full shadow-2xl">
+          OFFLINE PROTOCOL ACTIVE • FINISH EXAM OFFLINE • SYNC PENDING
+        </div>
+      )}
+
+      <header className={`h-24 bg-slate-900/40 backdrop-blur-3xl border-b border-white/5 sticky ${!isOnline ? 'top-6' : 'top-0'} z-[60] flex items-center justify-between px-12 transition-all`}>
         <div className="flex items-center gap-5 cursor-pointer group" onClick={() => navigate('/config')}>
           <LogoElite size="small" />
           <span className="text-3xl font-black text-white tracking-tighter group-hover:text-blue-400 transition-colors">EduGen</span>
@@ -347,24 +366,13 @@ const App: React.FC = () => {
                   <h2 className="text-8xl font-black text-white tracking-tighter mt-8 italic">Simulation <span className="text-blue-500">Suite.</span></h2>
                   <p className="text-slate-500 font-black uppercase tracking-[0.6em] text-sm mt-4">Next-Generation Assessment Engine</p>
                   
-                  {/* Undo/Redo HUD */}
                   {!hasAlreadyAttempted && (
                     <div className="flex justify-center gap-4 mt-8">
-                      <button 
-                        onClick={undo} 
-                        disabled={historyIndex === 0}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
-                        Undo
+                      <button onClick={undo} disabled={historyIndex === 0} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg> Undo
                       </button>
-                      <button 
-                        onClick={redo} 
-                        disabled={historyIndex === topicHistory.length - 1}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
-                      >
-                        Redo
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      <button onClick={redo} disabled={historyIndex === topicHistory.length - 1} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
+                        Redo <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                       </button>
                     </div>
                   )}
@@ -372,7 +380,6 @@ const App: React.FC = () => {
 
                 <div className={`grid md:grid-cols-2 gap-12 transition-all ${hasAlreadyAttempted ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                   <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-blue-500/30">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 text-blue-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg></div>
                     <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
                       <span className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-blue-500/30">∑</span> NUMERACY
                     </h3>
@@ -383,7 +390,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-indigo-500/30">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5-1.17 0-2.39.15-3.5.5V19c1.11-.35 2.33-.5 3.5-.5 1.95 0-4.05.4 5.5 1.5 1.45-1.1 3.55-1.5 5.5-1.5 1.17 0-2.39.15-3.5.5V5z"/></svg></div>
                     <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
                       <span className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-indigo-500/30">¶</span> LITERACY
                     </h3>
@@ -406,8 +412,8 @@ const App: React.FC = () => {
                       <button onClick={() => navigate('/history')} className="mt-4 bg-slate-950 px-10 py-4 rounded-2xl border border-white/10 text-blue-400 font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all">Review Past Log</button>
                     </div>
                   ) : (
-                    <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all">
-                      GENERATE SYSTEM <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
+                    <button onClick={startGeneration} className={`w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all ${!isOnline ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
+                      {isOnline ? 'GENERATE SYSTEM' : 'OFFLINE MODE'} <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
                     </button>
                   )}
                   {sysError && <p className="mt-10 text-rose-500 font-black uppercase text-xs tracking-[0.4em] animate-bounce">{sysError}</p>}
@@ -456,12 +462,6 @@ const App: React.FC = () => {
                       <button onClick={() => navigate('/history')} className="bg-blue-600 hover:bg-blue-500 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-blue-400/30">VIEW HISTORY LOGS</button>
                     </div>
                   </div>
-                  <div className="space-y-16 pt-20 border-t border-white/5">
-                    <h3 className="text-5xl font-black text-white text-center italic tracking-tighter">System Analytics & Log Review</h3>
-                    {questions.length > 0 ? questions.map((q, i) => (
-                      <QuestionCard key={i} index={i} question={q} showAnswers={true} interactive={false} currentAnswer={userAnswers[i]} />
-                    )) : history[0] && <div className="text-center text-slate-500 italic">Historical data review active.</div>}
-                  </div>
                 </div>
               ) : <Navigate to="/config" />
             } />
@@ -470,7 +470,9 @@ const App: React.FC = () => {
               <div className="glass-card-3d p-16 rounded-[4rem] max-w-5xl mx-auto animate-in slide-in-from-bottom duration-700 border-white/5">
                 <div className="flex items-center justify-between mb-16">
                   <h2 className="text-5xl font-black text-white italic tracking-tighter">Archive Node Logs</h2>
-                  <div className="px-5 py-2 rounded-full bg-slate-900 border border-white/5 text-[10px] font-black text-blue-500 uppercase tracking-widest">System Online</div>
+                  <div className={`px-5 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest ${isOnline ? 'bg-slate-900 border-blue-500/30 text-blue-500' : 'bg-rose-900/20 border-rose-500/30 text-rose-500'}`}>
+                    {isOnline ? 'System Online' : 'Offline Access'}
+                  </div>
                 </div>
                 {history.length === 0 ? <p className="text-slate-700 font-bold py-32 text-center uppercase tracking-[0.5em] text-sm">Database Empty • No entries recorded.</p> : (
                   <div className="space-y-6">
@@ -480,11 +482,6 @@ const App: React.FC = () => {
                           <p className="font-black text-2xl text-white tracking-tight">{h.date}</p>
                           <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mt-3">{h.correctCount} / {h.totalQuestions} Competency Success Hits</p>
                           <p className="text-[9px] font-black text-slate-500 mt-1 uppercase">NODE: {h.username}</p>
-                          <div className="flex gap-2 mt-4 flex-wrap">
-                            {h.topics.slice(0, 3).map((t, idx) => (
-                              <span key={idx} className="bg-slate-950 px-3 py-1 rounded-lg text-[8px] font-black text-slate-500 uppercase border border-white/5">{t}</span>
-                            ))}
-                          </div>
                         </div>
                         <div className="w-24 h-24 bg-gradient-to-tr from-blue-700 to-indigo-900 border-4 border-slate-950 rounded-[2rem] flex items-center justify-center font-black text-4xl text-white shadow-2xl group-hover:scale-110 transition-transform">{h.score}</div>
                       </div>
@@ -505,9 +502,8 @@ const App: React.FC = () => {
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mt-1">Digital Assessment Verified System v5.0.2</p>
           </div>
           <div className="flex gap-10">
-            <div className="text-center"><p className="text-xs font-black text-white">2.5k+</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Tests Sync</p></div>
+            <div className="text-center"><p className="text-xs font-black text-white">{isOnline ? 'Online' : 'Offline'}</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Network</p></div>
             <div className="text-center"><p className="text-xs font-black text-white">99.9%</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Uptime AI</p></div>
-            <div className="text-center"><p className="text-xs font-black text-white">4.120</p><p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Kernel V</p></div>
           </div>
         </div>
       </footer>
