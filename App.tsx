@@ -49,8 +49,10 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authForm, setAuthForm] = useState({ user: '', pass: '' });
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
+  const [authForm, setAuthForm] = useState({ user: '', pass: '', phone: '' });
+  const [recoveryPhone, setRecoveryPhone] = useState('');
+  const [recoveredInfo, setRecoveredInfo] = useState<string | null>(null);
   
   const [questions, setQuestions] = useState<Question[]>(() => {
     const saved = sessionStorage.getItem('edugen_active_exam');
@@ -76,6 +78,11 @@ const App: React.FC = () => {
     return saved ? parseInt(saved) : 0;
   });
   const timerId = useRef<any>(null);
+
+  // Attempt Tracking: Check if user has already completed an exam
+  const hasAlreadyAttempted = useMemo(() => {
+    return history.some(h => h.username === currentUser?.username);
+  }, [history, currentUser]);
 
   // Undo/Redo State Management for Topics
   const [topicHistory, setTopicHistory] = useState<TopicSelection[]>([{
@@ -123,8 +130,10 @@ const App: React.FC = () => {
     const registry = JSON.parse(localStorage.getItem('edugen_registry_v5') || '[]');
     
     if (authMode === 'register') {
-      if (!authForm.user || !authForm.pass) return setSysError("Complete credentials required.");
+      if (!authForm.user || !authForm.pass || !authForm.phone) return setSysError("Complete credentials required.");
       if (registry.some((u: any) => u.user === authForm.user)) return setSysError("Node ID already assigned.");
+      if (registry.some((u: any) => u.phone === authForm.phone)) return setSysError("Phone already linked to a Node.");
+      
       registry.push(authForm);
       localStorage.setItem('edugen_registry_v5', JSON.stringify(registry));
       setAuthMode('login');
@@ -132,7 +141,7 @@ const App: React.FC = () => {
     } else {
       const match = registry.find((u: any) => u.user === authForm.user && u.pass === authForm.pass);
       if (match) {
-        const session = { username: match.user, phone: '' };
+        const session = { username: match.user, phone: match.phone };
         setCurrentUser(session);
         localStorage.setItem('edugen_session_v5', JSON.stringify(session));
         navigate('/config');
@@ -140,8 +149,22 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRecovery = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSysError(null);
+    setRecoveredInfo(null);
+    const registry = JSON.parse(localStorage.getItem('edugen_registry_v5') || '[]');
+    const match = registry.find((u: any) => u.phone === recoveryPhone);
+    
+    if (match) {
+      setRecoveredInfo(`FOUND: [Terminal ID: ${match.user}] [Code: ${match.pass}]`);
+    } else {
+      setSysError("No Node identified with this Phone Link.");
+    }
+  };
+
   const startGeneration = async () => {
-    if (isSyncing) return;
+    if (isSyncing || hasAlreadyAttempted) return;
     setIsSyncing(true);
     setSysError(null);
     setUserAnswers({});
@@ -191,6 +214,7 @@ const App: React.FC = () => {
   };
 
   const toggleTopic = (cat: 'math' | 'indonesian', val: string) => {
+    if (hasAlreadyAttempted) return; // Disable changes if attempted
     const current = topicHistory[historyIndex];
     const nextTopics = {
       ...current,
@@ -228,20 +252,51 @@ const App: React.FC = () => {
           <h1 className="text-6xl font-black text-white mt-10 tracking-tighter italic">EduGen <span className="text-blue-500">TKA.</span></h1>
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mt-3 mb-12">Certified Assessment V.5.0</p>
           
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="relative">
-              <input type="text" placeholder="Terminal ID" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.user} onChange={e => setAuthForm({...authForm, user: e.target.value})} />
-            </div>
-            <div className="relative">
-              <input type="password" placeholder="Access Code" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.pass} onChange={e => setAuthForm({...authForm, pass: e.target.value})} />
-            </div>
-            {sysError && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest animate-bounce">{sysError}</p>}
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-[0.2em] text-lg">Initialize</button>
-          </form>
+          {authMode === 'recover' ? (
+            <form onSubmit={handleRecovery} className="space-y-4">
+              <h2 className="text-xl font-black text-blue-400 uppercase tracking-widest mb-6">Node Recovery</h2>
+              <div className="relative">
+                <input type="text" placeholder="WhatsApp Number" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={recoveryPhone} onChange={e => setRecoveryPhone(e.target.value)} />
+              </div>
+              {recoveredInfo && (
+                <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-2xl animate-in zoom-in">
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{recoveredInfo}</p>
+                </div>
+              )}
+              {sysError && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest animate-bounce">{sysError}</p>}
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-[0.2em] text-lg">Locate Node</button>
+              <button type="button" onClick={() => { setAuthMode('login'); setSysError(null); setRecoveredInfo(null); }} className="w-full text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mt-4 hover:text-white transition-colors">Return to Auth</button>
+            </form>
+          ) : (
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="relative">
+                <input type="text" placeholder="Terminal ID" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.user} onChange={e => setAuthForm({...authForm, user: e.target.value})} />
+              </div>
+              {authMode === 'register' && (
+                <div className="relative">
+                  <input type="text" placeholder="WhatsApp Number" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.phone} onChange={e => setAuthForm({...authForm, phone: e.target.value})} />
+                </div>
+              )}
+              <div className="relative">
+                <input type="password" placeholder="Access Code" className="w-full bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all shadow-inner" value={authForm.pass} onChange={e => setAuthForm({...authForm, pass: e.target.value})} />
+              </div>
+              {sysError && <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest animate-bounce">{sysError}</p>}
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl shadow-2xl shadow-blue-600/30 transition-all uppercase tracking-[0.2em] text-lg">
+                {authMode === 'register' ? 'Deploy Node' : 'Initialize'}
+              </button>
+            </form>
+          )}
           
-          <button onClick={() => { setAuthMode(m => m === 'login' ? 'register' : 'login'); setSysError(null); }} className="mt-10 text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] hover:text-blue-400 transition-colors">
-            {authMode === 'login' ? '>> Register New Node' : '<< Back to Auth'}
-          </button>
+          <div className="mt-10 flex flex-col gap-4">
+            <button onClick={() => { setAuthMode(m => m === 'login' ? 'register' : 'login'); setSysError(null); }} className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] hover:text-blue-400 transition-colors">
+              {authMode === 'login' ? '>> Register New Node' : '<< Back to Auth'}
+            </button>
+            {authMode === 'login' && (
+              <button onClick={() => { setAuthMode('recover'); setSysError(null); }} className="text-[10px] font-black text-slate-800 uppercase tracking-[0.3em] hover:text-rose-500 transition-colors">
+                Lost Node Credentials?
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -286,32 +341,36 @@ const App: React.FC = () => {
             <Route path="/config" element={
               <div className="max-w-6xl mx-auto space-y-20 animate-in slide-in-from-bottom duration-1000">
                 <div className="text-center relative">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600/10 text-blue-500 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border border-blue-500/20">System Verified • Genesis Module</div>
+                  <div className={`absolute -top-10 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border ${hasAlreadyAttempted ? 'bg-rose-600/20 text-rose-500 border-rose-500/20' : 'bg-blue-600/10 text-blue-500 border-blue-500/20'}`}>
+                    {hasAlreadyAttempted ? 'SESSION LOCKED • ATTEMPT EXHAUSTED' : 'SYSTEM VERIFIED • GENESIS MODULE'}
+                  </div>
                   <h2 className="text-8xl font-black text-white tracking-tighter mt-8 italic">Simulation <span className="text-blue-500">Suite.</span></h2>
                   <p className="text-slate-500 font-black uppercase tracking-[0.6em] text-sm mt-4">Next-Generation Assessment Engine</p>
                   
                   {/* Undo/Redo HUD */}
-                  <div className="flex justify-center gap-4 mt-8">
-                    <button 
-                      onClick={undo} 
-                      disabled={historyIndex === 0}
-                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
-                      Undo
-                    </button>
-                    <button 
-                      onClick={redo} 
-                      disabled={historyIndex === topicHistory.length - 1}
-                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
-                    >
-                      Redo
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </button>
-                  </div>
+                  {!hasAlreadyAttempted && (
+                    <div className="flex justify-center gap-4 mt-8">
+                      <button 
+                        onClick={undo} 
+                        disabled={historyIndex === 0}
+                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
+                        Undo
+                      </button>
+                      <button 
+                        onClick={redo} 
+                        disabled={historyIndex === topicHistory.length - 1}
+                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
+                      >
+                        Redo
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-12">
+                <div className={`grid md:grid-cols-2 gap-12 transition-all ${hasAlreadyAttempted ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                   <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-blue-500/30">
                     <div className="absolute top-0 right-0 p-8 opacity-5 text-blue-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg></div>
                     <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
@@ -324,7 +383,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-indigo-500/30">
-                    <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5-1.17 0-2.39.15-3.5.5V19c1.11-.35 2.33-.5 3.5-.5 1.95 0 4.05.4 5.5 1.5 1.45-1.1 3.55-1.5 5.5-1.5 1.17 0 2.39.15 3.5.5V5z"/></svg></div>
+                    <div className="absolute top-0 right-0 p-8 opacity-5 text-indigo-500 transform group-hover:scale-125 transition-transform"><svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5-1.17 0-2.39.15-3.5.5V19c1.11-.35 2.33-.5 3.5-.5 1.95 0-4.05.4 5.5 1.5 1.45-1.1 3.55-1.5 5.5-1.5 1.17 0-2.39.15-3.5.5V5z"/></svg></div>
                     <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
                       <span className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-indigo-500/30">¶</span> LITERACY
                     </h3>
@@ -337,9 +396,20 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="text-center pt-10 pb-32">
-                  <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all">
-                    GENERATE SYSTEM <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
-                  </button>
+                  {hasAlreadyAttempted ? (
+                    <div className="w-full max-w-4xl mx-auto p-12 bg-slate-900 border-2 border-rose-500/30 rounded-[3.5rem] flex flex-col items-center gap-6 animate-pulse">
+                      <svg className="w-20 h-20 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0 0v3m0-3h3m-3 0H9m12-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      <div>
+                        <h4 className="text-3xl font-black text-white uppercase tracking-tighter">Access Period Completed</h4>
+                        <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] mt-2">Only one attempt allowed per Terminal ID.</p>
+                      </div>
+                      <button onClick={() => navigate('/history')} className="mt-4 bg-slate-950 px-10 py-4 rounded-2xl border border-white/10 text-blue-400 font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all">Review Past Log</button>
+                    </div>
+                  ) : (
+                    <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all">
+                      GENERATE SYSTEM <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
+                    </button>
+                  )}
                   {sysError && <p className="mt-10 text-rose-500 font-black uppercase text-xs tracking-[0.4em] animate-bounce">{sysError}</p>}
                 </div>
               </div>
@@ -383,7 +453,7 @@ const App: React.FC = () => {
                     </div>
                     <h2 className="text-7xl font-black text-white italic tracking-tighter mb-10">Analysis Complete.</h2>
                     <div className="flex justify-center gap-6">
-                      <button onClick={() => navigate('/config')} className="bg-blue-600 hover:bg-blue-500 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-blue-400/30">INITIALIZE NEW PROTOCOL</button>
+                      <button onClick={() => navigate('/history')} className="bg-blue-600 hover:bg-blue-500 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-blue-400/30">VIEW HISTORY LOGS</button>
                     </div>
                   </div>
                   <div className="space-y-16 pt-20 border-t border-white/5">
@@ -409,6 +479,7 @@ const App: React.FC = () => {
                         <div>
                           <p className="font-black text-2xl text-white tracking-tight">{h.date}</p>
                           <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mt-3">{h.correctCount} / {h.totalQuestions} Competency Success Hits</p>
+                          <p className="text-[9px] font-black text-slate-500 mt-1 uppercase">NODE: {h.username}</p>
                           <div className="flex gap-2 mt-4 flex-wrap">
                             {h.topics.slice(0, 3).map((t, idx) => (
                               <span key={idx} className="bg-slate-950 px-3 py-1 rounded-lg text-[8px] font-black text-slate-500 uppercase border border-white/5">{t}</span>
