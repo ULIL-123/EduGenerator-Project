@@ -91,13 +91,15 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", 
+      // Switch to flash for < 2 minute performance
+      model: "gemini-3-flash-preview", 
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
-        temperature: 0.15, // High precision for topic adherence
-        thinkingConfig: { thinkingBudget: 4096 }
+        temperature: 0.15,
+        // Disable thinking budget to reduce latency significantly
+        thinkingConfig: { thinkingBudget: 0 }
       }
     });
 

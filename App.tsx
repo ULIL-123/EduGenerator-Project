@@ -212,9 +212,15 @@ const App: React.FC = () => {
     const current = topicHistory[historyIndex];
     const nextTopics = {
       ...current,
-      [cat]: current[cat].includes(val) ? current[cat].filter(x => x !== val) : [...current[cat], val]
+      [cat]: current[cat].includes(val) 
+        ? current[cat].filter(x => x !== val) 
+        : [...current[cat], val]
     };
-    const newHistory = topicHistory.slice(0, historyIndex + 1);
+    
+    // Fixed logic to update topicHistory correctly
+    const newHistory = [...topicHistory.slice(0, historyIndex + 1), nextTopics];
+    if (newHistory.length > 20) newHistory.shift();
+    
     setTopicHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   };
@@ -226,7 +232,6 @@ const App: React.FC = () => {
         <div className="glass-card-3d rounded-[3rem] p-10 sm:p-16 text-center border-white/5 relative">
           <div className="scanline"></div>
           <LogoElite size="large" />
-          {/* Changed TKA. to TKA-SD. */}
           <h1 className="text-5xl sm:text-6xl font-black text-white mt-8 tracking-tighter italic">EduGen <span className="text-blue-500">TKA-SD.</span></h1>
           <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em] mt-3 mb-10">Single User Edition v5.2</p>
           
@@ -255,11 +260,9 @@ const App: React.FC = () => {
           
           <div className="mt-8 flex flex-col gap-3">
             {getRegistry().length === 0 && authMode === 'login' && (
-              /* Fix: Escape JSX characters '>>' to '&gt;&gt;' */
               <button onClick={() => setAuthMode('register')} className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-blue-400">&gt;&gt; REGISTER NEW USER</button>
             )}
             {authMode === 'register' && (
-              /* Fix: Escape JSX characters '<<' to '&lt;&lt;' and '>>' to '&gt;&gt;' to resolve 'Cannot find name BACK' error */
               <button onClick={() => setAuthMode('login')} className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-blue-400">&lt;&lt; BACK TO LOGIN</button>
             )}
             {authMode === 'login' && (
@@ -304,25 +307,47 @@ const App: React.FC = () => {
                 <h2 className="text-5xl sm:text-8xl font-black text-white tracking-tighter italic">Simulation <span className="text-blue-500">Suite.</span></h2>
               </div>
               <div className="grid md:grid-cols-2 gap-8">
-                <div className="glass-card-3d p-8 rounded-[3rem]">
+                <div className="glass-card-3d p-8 rounded-[3rem] transition-all duration-500 hover:shadow-blue-500/10">
                   <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-4"><span className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">∑</span> NUMERACY</h3>
                   <div className="flex flex-wrap gap-3">
                     {NUMERASI_TOPICS.map(t => (
-                      <button key={t} onClick={() => toggleTopic('math', t)} className={`px-5 py-4 rounded-2xl text-left font-black text-sm border-2 transition-all ${topics.math.includes(t) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-500'}`}>{t}</button>
+                      <button 
+                        key={t} 
+                        onClick={() => toggleTopic('math', t)} 
+                        className={`px-5 py-4 rounded-2xl text-left font-black text-sm border-2 transition-all duration-300 active:scale-90 ${
+                          topics.math.includes(t) 
+                            ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/30 scale-105' 
+                            : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                        }`}
+                      >
+                        {t}
+                      </button>
                     ))}
                   </div>
                 </div>
-                <div className="glass-card-3d p-8 rounded-[3rem]">
+                <div className="glass-card-3d p-8 rounded-[3rem] transition-all duration-500 hover:shadow-indigo-500/10">
                   <h3 className="text-2xl font-black text-white mb-8 flex items-center gap-4"><span className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center">¶</span> LITERACY</h3>
                   <div className="flex flex-wrap gap-3">
                     {LITERASI_TOPICS.map(t => (
-                      <button key={t} onClick={() => toggleTopic('indonesian', t)} className={`px-5 py-4 rounded-2xl text-left font-black text-sm border-2 transition-all ${topics.indonesian.includes(t) ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-900 border-slate-800 text-slate-500'}`}>{t}</button>
+                      <button 
+                        key={t} 
+                        onClick={() => toggleTopic('indonesian', t)} 
+                        className={`px-5 py-4 rounded-2xl text-left font-black text-sm border-2 transition-all duration-300 active:scale-90 ${
+                          topics.indonesian.includes(t) 
+                            ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-500/30 scale-105' 
+                            : 'bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                        }`}
+                      >
+                        {t}
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
               <div className="text-center pt-8">
-                <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-10 rounded-[2.5rem] font-black text-3xl sm:text-5xl">GENERATE SYSTEM →</button>
+                <button onClick={startGeneration} className="w-full max-w-4xl btn-3d-blue text-white py-10 rounded-[2.5rem] font-black text-3xl sm:text-5xl group">
+                   GENERATE SYSTEM <span className="inline-block group-hover:translate-x-2 transition-transform">→</span>
+                </button>
                 {sysError && <p className="mt-8 text-rose-500 font-black uppercase text-[10px] tracking-widest">{sysError}</p>}
               </div>
             </div>
