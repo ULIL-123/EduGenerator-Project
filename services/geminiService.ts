@@ -11,22 +11,12 @@ const QUESTION_SCHEMA = {
       subject: { type: Type.STRING },
       topic: { type: Type.STRING },
       type: { type: Type.STRING },
-      cognitiveLevel: { type: Type.STRING, description: "L1 (Pemahaman), L2 (Penerapan), atau L3 (Penalaran)" },
+      cognitiveLevel: { type: Type.STRING, description: "L1, L2, atau L3" },
       text: { type: Type.STRING },
-      passage: { type: Type.STRING, description: "Teks stimulus/bacaan untuk Literasi atau konteks Numerasi" },
+      passage: { type: Type.STRING },
       options: { type: Type.ARRAY, items: { type: Type.STRING } },
-      correctAnswer: { type: Type.STRING, description: "Kunci jawaban. Jika pilihan ganda kompleks, gunakan format string array JSON [\"A\", \"B\"]. Jika kategori, gunakan format string object JSON {\"0\": \"Benar\", \"1\": \"Salah\"}." },
-      categories: { 
-        type: Type.ARRAY, 
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            statement: { type: Type.STRING },
-            category: { type: Type.STRING }
-          }
-        }
-      },
-      explanation: { type: Type.STRING, description: "Penjelasan ilmiah berdasarkan konsep kurikulum merdeka" }
+      correctAnswer: { type: Type.STRING, description: "Kunci jawaban (String, JSON Array, atau JSON Object)" },
+      explanation: { type: Type.STRING }
     },
     required: ["id", "subject", "topic", "type", "text", "correctAnswer", "cognitiveLevel"]
   }
@@ -34,26 +24,21 @@ const QUESTION_SCHEMA = {
 
 export async function generateTKAQuestions(selectedTopics: TopicSelection): Promise<Question[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const mathTopicsStr = selectedTopics.math.join(", ");
-  const indonesianTopicsStr = selectedTopics.indonesian.join(", ");
-
+  
   const prompt = `
-    Anda adalah Pakar Asesmen Nasional Kemendikdasmen RI.
-    Susunlah 30 butir soal Tes Kemampuan Akademik (TKA) SD standar ANBK secara cepat.
+    Bertindaklah sebagai Pakar Pembuat Soal ANBK Kemendikdasmen. 
+    Buatlah 20 soal TKA SD (10 Numerasi, 10 Literasi) dengan standar kualitas tinggi.
+    
+    TOPIK:
+    Numerasi: ${selectedTopics.math.join(", ")}
+    Literasi: ${selectedTopics.indonesian.join(", ")}
 
-    KISI-KISI:
-    1. LITERASI (15 Soal): Fokus pada interpretasi teks fiksi/informasi. Topik: ${indonesianTopicsStr}.
-    2. NUMERASI (15 Soal): Fokus pada penalaran konteks nyata. Topik: ${mathTopicsStr}.
-
-    LEVEL KOGNITIF:
-    - L1 (Pemahaman): 30%
-    - L2 (Penerapan): 40%
-    - L3 (Penalaran/HOTS): 30%
-
-    PENTING:
-    - Gunakan variasi Pilihan Ganda, Pilihan Ganda Kompleks (MCMA), dan Benar/Salah (Kategori).
-    - Pastikan 'correctAnswer' untuk Pilihan Ganda Kompleks adalah stringified JSON Array.
-    - Pastikan 'correctAnswer' untuk Kategori adalah stringified JSON Object.
+    ATURAN TEKNIS:
+    1. Gunakan Bahasa Indonesia formal dan baku.
+    2. Variasikan tipe soal: 'Pilihan Ganda', 'Pilihan Ganda Kompleks (MCMA)', dan 'Pilihan Ganda Kompleks (Kategori)'.
+    3. Untuk MCMA, 'correctAnswer' HARUS stringified array seperti '["A", "C"]'.
+    4. Untuk Kategori, 'correctAnswer' HARUS stringified object seperti '{"0": "Benar", "1": "Salah"}'.
+    5. 'passage' hanya diisi jika soal memerlukan bacaan/stimulus panjang.
   `;
 
   try {
@@ -61,31 +46,39 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingBudget: 0 }, // Kecepatan maksimal (latency rendah)
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
-        temperature: 0.7
+        temperature: 0.6
       }
     });
 
+    if (!response.text) throw new Error("Respons AI kosong");
+    
     const results = JSON.parse(response.text);
     
     return results.map((q: any) => {
         let parsedAnswer = q.correctAnswer;
+        // Robust JSON Parsing untuk jawaban kompleks
         if (typeof q.correctAnswer === 'string') {
           const trimmed = q.correctAnswer.trim();
           if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
             try {
               parsedAnswer = JSON.parse(trimmed);
             } catch (e) {
-              console.warn("Failed to parse JSON answer, keeping as string:", trimmed);
+              console.warn("Answer parse fallback:", trimmed);
             }
           }
         }
-        return { ...q, correctAnswer: parsedAnswer };
+        return { 
+          ...q, 
+          correctAnswer: parsedAnswer,
+          // Normalisasi tipe subject jika model salah mengembalikan teks
+          subject: q.subject.toLowerCase().includes('math') || q.subject.toLowerCase().includes('num') ? 'Matematika' : 'Bahasa Indonesia'
+        };
     });
   } catch (error) {
-    console.error("Critical Error in Gemini TKA Generator:", error);
+    console.error("Gemini Service Failure:", error);
     throw error;
   }
 }
