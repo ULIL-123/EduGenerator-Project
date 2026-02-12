@@ -77,10 +77,14 @@ const App: React.FC = () => {
   });
   const timerId = useRef<any>(null);
 
-  const [topics, setTopics] = useState<TopicSelection>({
+  // Undo/Redo State Management for Topics
+  const [topicHistory, setTopicHistory] = useState<TopicSelection[]>([{
     math: ["Bilangan & Operasi", "Pecahan"],
     indonesian: ["Teks Sastra", "Ide Pokok"]
-  });
+  }]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  const topics = useMemo(() => topicHistory[historyIndex], [topicHistory, historyIndex]);
 
   // Sync Timer for UI
   useEffect(() => {
@@ -187,10 +191,31 @@ const App: React.FC = () => {
   };
 
   const toggleTopic = (cat: 'math' | 'indonesian', val: string) => {
-    setTopics(prev => ({
-      ...prev,
-      [cat]: prev[cat].includes(val) ? prev[cat].filter(x => x !== val) : [...prev[cat], val]
-    }));
+    const current = topicHistory[historyIndex];
+    const nextTopics = {
+      ...current,
+      [cat]: current[cat].includes(val) 
+        ? current[cat].filter(x => x !== val) 
+        : [...current[cat], val]
+    };
+    
+    // Create new history branch
+    const newHistory = topicHistory.slice(0, historyIndex + 1);
+    newHistory.push(nextTopics);
+    
+    // Limit history size to 30 for performance
+    if (newHistory.length > 30) newHistory.shift();
+    
+    setTopicHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
+  const undo = () => {
+    if (historyIndex > 0) setHistoryIndex(historyIndex - 1);
+  };
+
+  const redo = () => {
+    if (historyIndex < topicHistory.length - 1) setHistoryIndex(historyIndex + 1);
   };
 
   if (!currentUser) return (
@@ -264,6 +289,26 @@ const App: React.FC = () => {
                   <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600/10 text-blue-500 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border border-blue-500/20">System Verified • Genesis Module</div>
                   <h2 className="text-8xl font-black text-white tracking-tighter mt-8 italic">Simulation <span className="text-blue-500">Suite.</span></h2>
                   <p className="text-slate-500 font-black uppercase tracking-[0.6em] text-sm mt-4">Next-Generation Assessment Engine</p>
+                  
+                  {/* Undo/Redo HUD */}
+                  <div className="flex justify-center gap-4 mt-8">
+                    <button 
+                      onClick={undo} 
+                      disabled={historyIndex === 0}
+                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg>
+                      Undo
+                    </button>
+                    <button 
+                      onClick={redo} 
+                      disabled={historyIndex === topicHistory.length - 1}
+                      className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}
+                    >
+                      Redo
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-12">

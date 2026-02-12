@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Question } from '../types';
 
 interface QuestionCardProps {
@@ -19,6 +19,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
   currentAnswer,
   onAnswerChange 
 }) => {
+  const [isExplanationVisible, setIsExplanationVisible] = useState(false);
   
   const handleMCChange = (opt: string) => {
     if (onAnswerChange) onAnswerChange(opt);
@@ -67,36 +68,73 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
     return (
       <div className={`mt-12 p-10 border-2 rounded-[3.5rem] shadow-2xl animate-in slide-in-from-bottom duration-500 overflow-hidden relative ${
-        isCorrect ? 'bg-emerald-900/20 border-emerald-500/30' : 'bg-rose-900/20 border-rose-500/30'
+        isCorrect ? 'bg-emerald-900/10 border-emerald-500/20' : 'bg-rose-900/10 border-rose-500/20'
       }`}>
-        <div className="absolute top-0 right-0 p-12 opacity-[0.03]">
+        <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
            <svg className="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/></svg>
         </div>
         
         <div className="relative z-10">
-          <div className="flex items-center gap-6 mb-8">
-            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center font-black text-3xl text-white shadow-2xl ${isCorrect ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-rose-500 shadow-rose-500/40'}`}>
-              {isCorrect ? '✓' : '✗'}
-            </div>
-            <div>
-              <p className={`font-black text-3xl tracking-tighter italic ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {isCorrect ? 'SYSTEM VALIDATION SUCCESS' : 'SYSTEM CALIBRATION ERROR'}
-              </p>
-              <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-60 text-white">Analytical Response Log v5.0</p>
+          <div className="flex items-center justify-between flex-wrap gap-6 mb-10">
+            <div className="flex items-center gap-6">
+              <div className={`w-16 h-16 rounded-3xl flex items-center justify-center font-black text-3xl text-white shadow-2xl ${isCorrect ? 'bg-emerald-500 shadow-emerald-500/40' : 'bg-rose-500 shadow-rose-500/40'}`}>
+                {isCorrect ? '✓' : '✗'}
+              </div>
+              <div>
+                <p className={`font-black text-3xl tracking-tighter italic ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {isCorrect ? 'VALIDATION SUCCESS' : 'CALIBRATION ERROR'}
+                </p>
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-60 text-white">Neural Response Log v5.0</p>
+              </div>
             </div>
           </div>
           
-          <div className="space-y-6 pl-2">
-            <div>
-              <p className="text-[11px] font-black opacity-60 uppercase tracking-[0.4em] mb-3 text-white">Master Answer Key:</p>
-              <div className="p-6 bg-slate-950/80 rounded-[2rem] border border-white/10 font-black text-2xl text-white shadow-inner tracking-tighter border-l-8 border-l-blue-500">
+          <div className="space-y-8">
+            <div className="bg-slate-950/80 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
+              <p className="text-[11px] font-black opacity-60 uppercase tracking-[0.4em] mb-4 text-white">System Key Answer:</p>
+              <div className="font-black text-3xl text-blue-400 tracking-tighter border-l-8 border-blue-600 pl-6">
                 {displayAnswer}
               </div>
             </div>
+
             {question.explanation && (
-              <div className="mt-8 p-8 bg-white/5 rounded-[2.5rem] border-l-4 border-slate-500/30">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Explanatory Logic:</p>
-                <p className="text-lg italic font-bold leading-relaxed text-slate-300">"{question.explanation}"</p>
+              <div className="pt-4">
+                {!isExplanationVisible ? (
+                  <button 
+                    onClick={() => setIsExplanationVisible(true)}
+                    className="w-full bg-slate-900/50 hover:bg-slate-800 border border-white/10 p-6 rounded-[2rem] flex items-center justify-center gap-4 transition-all group active:scale-95"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-blue-500 group-hover:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] group-hover:text-white transition-colors">Reveal AI Rationale</span>
+                  </button>
+                ) : (
+                  <div className="animate-in zoom-in duration-500 origin-top">
+                    <div className="p-10 bg-gradient-to-br from-slate-900/80 to-slate-950 border border-blue-500/20 rounded-[3rem] relative shadow-2xl">
+                      <div className="absolute -top-3 left-10 px-4 py-1 bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full">AI INSIGHT CORE</div>
+                      <div className="flex gap-6">
+                        <div className="w-1 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full shrink-0"></div>
+                        <div className="space-y-4">
+                          <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest opacity-80">Explanation Analysis:</p>
+                          <p className="text-xl font-bold leading-relaxed text-slate-300 italic">
+                            "{question.explanation}"
+                          </p>
+                          <div className="flex items-center gap-2 pt-4 border-t border-white/5 opacity-40">
+                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Processed by EduGen Gemini Engine</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsExplanationVisible(false)}
+                      className="mt-4 mx-auto block text-[9px] font-black text-slate-700 uppercase tracking-widest hover:text-blue-500 transition-colors"
+                    >
+                      Hide Analysis
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
