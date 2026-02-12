@@ -1,0 +1,25 @@
+
+{
+  "name": "EduGen TKA SD Professional",
+  "short_name": "EduGen TKA",
+  "description": "Generator Soal Tes Kemampuan Akademik (TKA) Berbasis AI",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5832/5832416.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5832/5832416.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

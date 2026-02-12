@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EduGen TKA">
+    
+    <title>EduGen TKA SD - Premium Blue Edition</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5832/5832416.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --dark-blue: #020617;
+            --surface-blue: #0f172a;
+            --accent-sky: #0ea5e9;
+        }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top right, #1e293b, #0f172a, #020617);
+            min-height: 100vh;
+            color: #f1f5f9;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card-3d {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(25px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+        .glass-card-3d:hover {
+            transform: translateY(-5px);
+            box-shadow: 
+                0 35px 60px -15px rgba(0, 0, 0, 0.6),
+                inset 0 1px 2px 0 rgba(255, 255, 255, 0.15);
+        }
+        .btn-3d-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            box-shadow: 
+                0 4px 0 #1e40af, 
+                0 15px 25px -5px rgba(37, 99, 235, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-3d-blue:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 6px 0 #1e40af, 
+                0 20px 30px -5px rgba(37, 99, 235, 0.5);
+        }
+        .btn-3d-blue:active {
+            transform: translateY(3px);
+            box-shadow: 
+                0 1px 0 #1e40af, 
+                0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+        .logo-container {
+            perspective: 1000px;
+        }
+        .logo-3d-element {
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+        .logo-container:hover .logo-3d-element {
+            transform: rotateY(10deg) rotateX(10deg);
+        }
+        .logo-glow {
+            filter: drop-shadow(0 0 15px rgba(37, 99, 235, 0.6));
+        }
+
+        @keyframes glow-pulse-blue {
+            0%, 100% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.6), inset 0 0 8px rgba(255,255,255,0.2); border-color: #60a5fa; }
+            50% { box-shadow: 0 0 30px rgba(37, 99, 235, 1), inset 0 0 12px rgba(255,255,255,0.4); border-color: #93c5fd; }
+        }
+        @keyframes glow-pulse-sky {
+            0%, 100% { box-shadow: 0 0 15px rgba(14, 165, 233, 0.6), inset 0 0 8px rgba(255,255,255,0.2); border-color: #7dd3fc; }
+            50% { box-shadow: 0 0 30px rgba(14, 165, 233, 1), inset 0 0 12px rgba(255,255,255,0.4); border-color: #bae6fd; }
+        }
+        .animate-glow-blue { animation: glow-pulse-blue 2s infinite ease-in-out; }
+        .animate-glow-sky { animation: glow-pulse-sky 2s infinite ease-in-out; }
+
+        .bg-blur-blob {
+            position: fixed;
+            z-index: -1;
+            width: 50vw;
+            height: 50vw;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+        }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { 
+            background: linear-gradient(to bottom, #1e293b, #334155); 
+            border-radius: 20px;
+            border: 2px solid #020617;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.2.0"
+  }
+}
+</script>
+</head>
+<body class="antialiased">
+    <div class="bg-blur-blob" style="top: -10%; right: -10%;"></div>
+    <div class="bg-blur-blob" style="bottom: -10%; left: -10%; background: radial-gradient(circle, rgba(14, 165, 233, 0.1) 0%, transparent 70%);"></div>
+    <div id="root"></div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('SW registered:', reg.scope);
+                    
+                    // Logic to detect updates and force refresh
+                    reg.onupdatefound = () => {
+                        const installingWorker = reg.installing;
+                        installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed') {
+                                if (navigator.serviceWorker.controller) {
+                                    console.log('New version detected! Reloading to update...');
+                                    window.location.reload();
+                                }
+                            }
+                        };
+                    };
+                }).catch(err => {
+                    console.log('SW registration failed:', err);
+                });
+            });
+
+            // Handle multiple tabs/clients syncing
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                window.location.reload();
+                refreshing = true;
+            });
+        }
+    </script>
+</body>
+</html>
