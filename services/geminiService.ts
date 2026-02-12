@@ -52,39 +52,52 @@ const QUESTION_SCHEMA = {
 export async function generateTKAQuestions(selectedTopics: TopicSelection): Promise<Question[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  const mathTopics = selectedTopics.math.length > 0 ? selectedTopics.math.join(", ") : "Bilangan, Aljabar, Geometri";
-  const indTopics = selectedTopics.indonesian.length > 0 ? selectedTopics.indonesian.join(", ") : "Literasi Teks Informasi & Sastra";
+  // Format user selections for the prompt
+  const mathTopicsString = selectedTopics.math.length > 0 
+    ? selectedTopics.math.join(", ") 
+    : "General Mathematics (Basic Arithmetic, Logic)";
+    
+  const indTopicsString = selectedTopics.indonesian.length > 0 
+    ? selectedTopics.indonesian.join(", ") 
+    : "General Literacy (Reading Comprehension, Grammar)";
 
   const prompt = `
-    Role: International Academic Assessment Expert.
+    Role: Senior International Academic Assessment Expert.
     Task: Create 30 high-quality TKA questions for Elementary (Grades 5-6).
     
-    Distribution:
-    - 15 Numeracy (Math) questions regarding: ${mathTopics}
-    - 15 Literacy (Indonesian) questions regarding: ${indTopics}
-
-    Answer Format Rules:
-    1. 'Pilihan Ganda': 'correctAnswer' must be "A", "B", "C", or "D".
-    2. 'Pilihan Ganda Kompleks (MCMA)': 'correctAnswer' must be a valid JSON array string like ["A", "C"]
-    3. 'Pilihan Ganda Kompleks (Kategori)': 'correctAnswer' must be a valid JSON object string like {"0": "Benar", "1": "Salah"}
+    CRITICAL INSTRUCTION - STRICT TOPIC ADHERENCE:
+    The user has actively selected specific topics. You MUST generate questions ONLY within these boundaries:
     
-    Validation Requirements:
-    - Use varied cognitive levels (L1-L3).
-    - Literacy questions MUST have a 'passage'.
-    - Numeracy questions MUST use real-world logic.
-    - Explanations MUST be logical and helpful.
+    1. NUMERACY SECTION (15 Questions):
+       Target Topics: [${mathTopicsString}]
+       - Generate 15 questions that are strictly categorized under these math topics.
+       - Use realistic academic contexts appropriate for Grade 5-6 students.
+    
+    2. LITERACY SECTION (15 Questions):
+       Target Topics: [${indTopicsString}]
+       - Generate 15 questions that are strictly categorized under these literacy/language topics.
+       - Each question MUST include a stimulus passage or short text.
+
+    Difficulty Requirements:
+    - Balanced distribution of Cognitive Levels: L1 (Pemahaman), L2 (Penerapan), and L3 (Penalaran/Higher-Order Thinking).
+
+    Technical Specifications:
+    - 'Pilihan Ganda': 'correctAnswer' must be a single character: "A", "B", "C", or "D".
+    - 'Pilihan Ganda Kompleks (MCMA)': 'correctAnswer' must be a JSON array string: ["A", "C"]
+    - 'Pilihan Ganda Kompleks (Kategori)': 'correctAnswer' must be a JSON object string: {"0": "Benar", "1": "Salah"}
+    
+    Output: Return ONLY valid JSON matching the provided schema.
   `;
 
   try {
-    /* Fix: Upgrade to 'gemini-3-pro-preview' for complex academic tasks and enable thinking budget */
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview", 
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
-        temperature: 0.2, // Lower temperature for more consistent academic validity
-        thinkingConfig: { thinkingBudget: 4096 } // Allow reasoning for complex question synthesis
+        temperature: 0.15, // High precision for topic adherence
+        thinkingConfig: { thinkingBudget: 4096 }
       }
     });
 
@@ -99,7 +112,7 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
         if (typeof q.correctAnswer === 'string') {
           const trimmed = q.correctAnswer.trim();
           if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-            try { finalAnswer = JSON.parse(trimmed); } catch (e) { /* fallback */ }
+            try { finalAnswer = JSON.parse(trimmed); } catch (e) { /* silent fallback */ }
           }
         }
         const subj = (q.subject || "").toLowerCase();
@@ -107,7 +120,7 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
         return { ...q, correctAnswer: finalAnswer, subject: normalizedSubject };
     });
   } catch (error: any) {
-    console.error("AI_GEN_ERROR:", error);
-    throw new Error("High traffic detected. Please re-initialize generation in a few seconds.");
+    console.error("AI_TOPIC_ADHERENCE_ERROR:", error);
+    throw new Error("Gagal menyusun materi soal sesuai pilihan. Pastikan koneksi internet stabil dan coba kembali.");
   }
 }

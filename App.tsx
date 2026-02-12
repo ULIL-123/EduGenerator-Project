@@ -226,7 +226,8 @@ const App: React.FC = () => {
         <div className="glass-card-3d rounded-[3rem] p-10 sm:p-16 text-center border-white/5 relative">
           <div className="scanline"></div>
           <LogoElite size="large" />
-          <h1 className="text-5xl sm:text-6xl font-black text-white mt-8 tracking-tighter italic">EduGen <span className="text-blue-500">TKA.</span></h1>
+          {/* Changed TKA. to TKA-SD. */}
+          <h1 className="text-5xl sm:text-6xl font-black text-white mt-8 tracking-tighter italic">EduGen <span className="text-blue-500">TKA-SD.</span></h1>
           <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.5em] mt-3 mb-10">Single User Edition v5.2</p>
           
           {authMode === 'recover' ? (
