@@ -3,17 +3,23 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Question, TopicSelection } from "../types";
 
 /**
- * Utility to clean AI output strings from potential Markdown JSON blocks.
- * Vital for production environments where models might ignore responseMimeType slightly.
+ * Utility untuk membersihkan string output AI dari blok JSON Markdown atau karakter sampah.
+ * Sangat krusial untuk kestabilan aplikasi setelah deploy.
  */
 function cleanJsonResponse(text: string): string {
   let cleaned = text.trim();
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
+  // Hapus triple backticks jika ada
+  cleaned = cleaned.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+  
+  // Cari index array pertama [ dan terakhir ] untuk memastikan validitas JSON
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+  
+  if (firstBracket !== -1 && lastBracket !== -1) {
+    cleaned = cleaned.substring(firstBracket, lastBracket + 1);
   }
-  return cleaned.trim();
+  
+  return cleaned;
 }
 
 const QUESTION_SCHEMA = {
@@ -22,26 +28,26 @@ const QUESTION_SCHEMA = {
     type: Type.OBJECT,
     properties: {
       id: { type: Type.STRING },
-      subject: { type: Type.STRING, description: "Must be 'Matematika' or 'Bahasa Indonesia'" },
+      subject: { type: Type.STRING, description: "Hanya boleh 'Matematika' atau 'Bahasa Indonesia'" },
       topic: { type: Type.STRING },
-      type: { type: Type.STRING, description: "Must be 'Pilihan Ganda', 'Pilihan Ganda Kompleks (MCMA)', or 'Pilihan Ganda Kompleks (Kategori)'" },
-      cognitiveLevel: { type: Type.STRING, description: "L1 (Pemahaman), L2 (Penerapan), or L3 (Penalaran)" },
-      text: { type: Type.STRING, description: "The main question text" },
-      passage: { type: Type.STRING, description: "Required for literacy or complex math context" },
-      options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Required for Pilihan Ganda and MCMA. Exactly 4 or 5 options." },
-      correctAnswer: { type: Type.STRING, description: "Crucial: 'A' for MC, '[\"A\", \"C\"]' for MCMA, or '{\"0\": \"Benar\", \"1\": \"Salah\"}' for Category" },
+      type: { type: Type.STRING, description: "Pilihan Ganda, Pilihan Ganda Kompleks (MCMA), atau Pilihan Ganda Kompleks (Kategori)" },
+      cognitiveLevel: { type: Type.STRING, description: "L1, L2, atau L3" },
+      text: { type: Type.STRING, description: "Pertanyaan utama" },
+      passage: { type: Type.STRING, description: "Teks bacaan (Wajib untuk Literasi)" },
+      options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "4-5 pilihan jawaban (Hanya untuk PG/MCMA)" },
+      correctAnswer: { type: Type.STRING, description: "Format: 'A' untuk PG, JSON array string untuk MCMA, atau JSON object string untuk Kategori" },
       categories: { 
         type: Type.ARRAY, 
         items: { 
           type: Type.OBJECT, 
           properties: {
             statement: { type: Type.STRING },
-            category: { type: Type.STRING, description: "Must be 'Benar' or 'Salah'" }
+            category: { type: Type.STRING, description: "Benar atau Salah" }
           } 
         },
-        description: "Only for 'Pilihan Ganda Kompleks (Kategori)'"
+        description: "Hanya untuk tipe Kategori"
       },
-      explanation: { type: Type.STRING, description: "Detailed pedagogical explanation" }
+      explanation: { type: Type.STRING, description: "Penjelasan rasional AI" }
     },
     required: ["id", "subject", "topic", "type", "text", "correctAnswer", "cognitiveLevel"]
   }
@@ -50,76 +56,77 @@ const QUESTION_SCHEMA = {
 export async function generateTKAQuestions(selectedTopics: TopicSelection): Promise<Question[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // Robust topic handling
-  const mathTopics = selectedTopics.math.length > 0 ? selectedTopics.math.join(", ") : "Semua topik dasar";
-  const indTopics = selectedTopics.indonesian.length > 0 ? selectedTopics.indonesian.join(", ") : "Semua topik dasar";
+  const mathTopics = selectedTopics.math.length > 0 ? selectedTopics.math.join(", ") : "Bilangan, Aljabar, Geometri";
+  const indTopics = selectedTopics.indonesian.length > 0 ? selectedTopics.indonesian.join(", ") : "Literasi Teks Informasi & Sastra";
 
+  // Prompt yang jauh lebih ketat untuk hasil profesional
   const prompt = `
-    Identity: Professional Assessment Developer for ANBK (Asesmen Nasional Berbasis Komputer).
-    Task: Generate 20 high-quality TKA SD (Academic Ability Test) questions.
+    Anda adalah Pakar Asesmen Nasional (ANBK). 
+    Tugas: Buat 20 soal Tes Kemampuan Akademik (TKA) SD kelas 5-6 yang berkualitas tinggi.
     
-    Distribution: 
-    - 10 Numeracy (Matematika) based on: ${mathTopics}
-    - 10 Literacy (Bahasa Indonesia) based on: ${indTopics}
+    KOMPOSISI:
+    - 10 Soal Numerasi (Matematika) tentang: ${mathTopics}
+    - 10 Soal Literasi (Bahasa Indonesia) tentang: ${indTopics}
 
-    Rigid Quality Standards:
-    1. Language: Formal Indonesian (Bahasa Indonesia Baku).
-    2. Variety: Use a mix of 'Pilihan Ganda', 'Pilihan Ganda Kompleks (MCMA)', and 'Pilihan Ganda Kompleks (Kategori)'.
-    3. Correct Answer Format (STRICT REQUIREMENT):
-       - If type is 'Pilihan Ganda', use a single letter: "A" or "B" or "C" etc.
-       - If type is 'Pilihan Ganda Kompleks (MCMA)', use a JSON array string: ["A", "C"]
-       - If type is 'Pilihan Ganda Kompleks (Kategori)', use a JSON object string: {"0": "Benar", "1": "Salah"}
-    4. Stimulus: Literacy questions MUST have a 'passage'. Numeracy word problems SHOULD have a 'passage'.
-    5. Cognitive: Map levels correctly (L1: Recall, L2: Application, L3: Analysis).
+    ATURAN KETAT FORMAT JAWABAN:
+    1. Jika 'Pilihan Ganda', 'correctAnswer' harus berupa satu huruf besar: "A" atau "B" dsb.
+    2. Jika 'Pilihan Ganda Kompleks (MCMA)', 'correctAnswer' harus berupa string array JSON: ["A", "C"]
+    3. Jika 'Pilihan Ganda Kompleks (Kategori)', 'correctAnswer' harus berupa string object JSON: {"0": "Benar", "1": "Salah"}
+    
+    KUALITAS:
+    - Gunakan Bahasa Indonesia Baku.
+    - Soal Literasi WAJIB memiliki 'passage' yang relevan dan mendalam.
+    - Soal Numerasi harus memiliki konteks kehidupan nyata (Higher Order Thinking Skills/HOTS).
+    - Variasikan tingkat kognitif antara L1 (Pemahaman), L2 (Penerapan), dan L3 (Penalaran).
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3-pro-preview", // Menggunakan model Pro untuk kualitas TKA terbaik
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
-        temperature: 0.3, // Lowered for maximum consistency in production
+        temperature: 0.4,
+        thinkingConfig: { thinkingBudget: 4000 } // Memberi waktu AI untuk memecahkan soal matematika dengan benar
       }
     });
 
     const rawText = response.text;
-    if (!rawText) throw new Error("AI engine returned null response.");
+    if (!rawText) throw new Error("AI tidak mengembalikan data.");
     
     const cleanedJson = cleanJsonResponse(rawText);
     const results = JSON.parse(cleanedJson);
     
-    if (!Array.isArray(results)) throw new Error("Response is not a valid question array.");
+    if (!Array.isArray(results)) throw new Error("Data hasil generate bukan array valid.");
 
     return results.map((q: any) => {
         let finalAnswer = q.correctAnswer;
         
-        // Handle potential stringified JSON in correctAnswer field
+        // Proteksi parsing untuk field correctAnswer yang mungkin dikirim AI dalam bentuk string terenkapsulasi
         if (typeof q.correctAnswer === 'string') {
           const trimmed = q.correctAnswer.trim();
           if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
             try {
               finalAnswer = JSON.parse(trimmed);
             } catch (e) {
-              console.warn("Soft parse failed on answer for ID:", q.id, "using raw string.");
+              console.warn("Soft-parse failed for ID:", q.id);
             }
           }
         }
 
-        // Normalize Subject
-        const subjTag = (q.subject || "").toLowerCase();
-        const subject = (subjTag.includes('mat') || subjTag.includes('num')) ? 'Matematika' : 'Bahasa Indonesia';
+        // Normalisasi Subjek untuk UI konsistensi
+        const subj = (q.subject || "").toLowerCase();
+        const normalizedSubject = (subj.includes('mat') || subj.includes('num')) ? 'Matematika' : 'Bahasa Indonesia';
 
         return { 
           ...q, 
           correctAnswer: finalAnswer,
-          subject
+          subject: normalizedSubject
         };
     });
   } catch (error: any) {
-    console.error("GENERATE_TKA_CRITICAL_FAILURE:", error);
-    // Rethrow with user-friendly context if needed
-    throw new Error(error.message || "Gagal menghubungkan ke AI. Silakan periksa koneksi Anda.");
+    console.error("GENERATE_CRITICAL_ERROR:", error);
+    throw new Error("Sistem AI sedang sibuk atau limit tercapai. Silakan coba lagi dalam beberapa saat.");
   }
 }
