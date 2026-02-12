@@ -91,11 +91,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Attempt Tracking: Check if user has already completed an exam
-  const hasAlreadyAttempted = useMemo(() => {
-    return history.some(h => h.username === currentUser?.username);
-  }, [history, currentUser]);
-
   // Undo/Redo State Management for Topics
   const [topicHistory, setTopicHistory] = useState<TopicSelection[]>([{
     math: ["Bilangan & Operasi", "Pecahan"],
@@ -182,7 +177,7 @@ const App: React.FC = () => {
       setSysError("OFFLINE: Connection required for AI Synthesis.");
       return;
     }
-    if (isSyncing || hasAlreadyAttempted) return;
+    if (isSyncing) return;
     setIsSyncing(true);
     setSysError(null);
     setUserAnswers({});
@@ -234,7 +229,6 @@ const App: React.FC = () => {
   };
 
   const toggleTopic = (cat: 'math' | 'indonesian', val: string) => {
-    if (hasAlreadyAttempted) return; 
     const current = topicHistory[historyIndex];
     const nextTopics = {
       ...current,
@@ -360,25 +354,23 @@ const App: React.FC = () => {
             <Route path="/config" element={
               <div className="max-w-6xl mx-auto space-y-20 animate-in slide-in-from-bottom duration-1000">
                 <div className="text-center relative">
-                  <div className={`absolute -top-10 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border ${hasAlreadyAttempted ? 'bg-rose-600/20 text-rose-500 border-rose-500/20' : 'bg-blue-600/10 text-blue-500 border-blue-500/20'}`}>
-                    {hasAlreadyAttempted ? 'SESSION LOCKED • ATTEMPT EXHAUSTED' : 'SYSTEM VERIFIED • GENESIS MODULE'}
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.4em] border bg-blue-600/10 text-blue-500 border-blue-500/20">
+                    SYSTEM VERIFIED • GENESIS MODULE
                   </div>
                   <h2 className="text-8xl font-black text-white tracking-tighter mt-8 italic">Simulation <span className="text-blue-500">Suite.</span></h2>
                   <p className="text-slate-500 font-black uppercase tracking-[0.6em] text-sm mt-4">Next-Generation Assessment Engine</p>
                   
-                  {!hasAlreadyAttempted && (
-                    <div className="flex justify-center gap-4 mt-8">
-                      <button onClick={undo} disabled={historyIndex === 0} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg> Undo
-                      </button>
-                      <button onClick={redo} disabled={historyIndex === topicHistory.length - 1} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
-                        Redo <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex justify-center gap-4 mt-8">
+                    <button onClick={undo} disabled={historyIndex === 0} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === 0 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"></path></svg> Undo
+                    </button>
+                    <button onClick={redo} disabled={historyIndex === topicHistory.length - 1} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-2 transition-all ${historyIndex === topicHistory.length - 1 ? 'opacity-20 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 hover:border-blue-500/50'}`}>
+                      Redo <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                  </div>
                 </div>
 
-                <div className={`grid md:grid-cols-2 gap-12 transition-all ${hasAlreadyAttempted ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                <div className="grid md:grid-cols-2 gap-12 transition-all">
                   <div className="glass-card-3d p-12 rounded-[4rem] relative overflow-hidden group hover:border-blue-500/30">
                     <h3 className="text-3xl font-black text-white mb-10 flex items-center gap-5">
                       <span className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-xl shadow-2xl shadow-blue-500/30">∑</span> NUMERACY
@@ -402,20 +394,9 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="text-center pt-10 pb-32">
-                  {hasAlreadyAttempted ? (
-                    <div className="w-full max-w-4xl mx-auto p-12 bg-slate-900 border-2 border-rose-500/30 rounded-[3.5rem] flex flex-col items-center gap-6 animate-pulse">
-                      <svg className="w-20 h-20 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0 0v3m0-3h3m-3 0H9m12-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      <div>
-                        <h4 className="text-3xl font-black text-white uppercase tracking-tighter">Access Period Completed</h4>
-                        <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.4em] mt-2">Only one attempt allowed per Terminal ID.</p>
-                      </div>
-                      <button onClick={() => navigate('/history')} className="mt-4 bg-slate-950 px-10 py-4 rounded-2xl border border-white/10 text-blue-400 font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all">Review Past Log</button>
-                    </div>
-                  ) : (
-                    <button onClick={startGeneration} className={`w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all ${!isOnline ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
-                      {isOnline ? 'GENERATE SYSTEM' : 'OFFLINE MODE'} <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
-                    </button>
-                  )}
+                  <button onClick={startGeneration} className={`w-full max-w-4xl btn-3d-blue text-white py-12 rounded-[3.5rem] font-black text-5xl tracking-tighter group transition-all ${!isOnline ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}>
+                    {isOnline ? 'GENERATE SYSTEM' : 'OFFLINE MODE'} <span className="inline-block group-hover:translate-x-4 transition-transform ml-4">→</span>
+                  </button>
                   {sysError && <p className="mt-10 text-rose-500 font-black uppercase text-xs tracking-[0.4em] animate-bounce">{sysError}</p>}
                 </div>
               </div>
@@ -460,6 +441,7 @@ const App: React.FC = () => {
                     <h2 className="text-7xl font-black text-white italic tracking-tighter mb-10">Analysis Complete.</h2>
                     <div className="flex justify-center gap-6">
                       <button onClick={() => navigate('/history')} className="bg-blue-600 hover:bg-blue-500 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-blue-400/30">VIEW HISTORY LOGS</button>
+                      <button onClick={() => navigate('/config')} className="bg-slate-900 hover:bg-slate-800 text-white px-16 py-7 rounded-[2.5rem] font-black text-2xl tracking-tighter shadow-3xl transition-all border border-white/10">PRACTICE AGAIN</button>
                     </div>
                   </div>
                 </div>
