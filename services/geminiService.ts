@@ -31,10 +31,10 @@ const QUESTION_SCHEMA = {
       subject: { type: Type.STRING, description: "Hanya boleh 'Matematika' atau 'Bahasa Indonesia'" },
       topic: { type: Type.STRING },
       type: { type: Type.STRING, description: "Pilihan Ganda, Pilihan Ganda Kompleks (MCMA), atau Pilihan Ganda Kompleks (Kategori)" },
-      cognitiveLevel: { type: Type.STRING, description: "L1, L2, atau L3" },
-      text: { type: Type.STRING, description: "Pertanyaan utama" },
-      passage: { type: Type.STRING, description: "Teks bacaan (Wajib untuk Literasi)" },
-      options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "4-5 pilihan jawaban (Hanya untuk PG/MCMA)" },
+      cognitiveLevel: { type: Type.STRING, description: "L1 (Pemahaman), L2 (Penerapan), atau L3 (Penalaran)" },
+      text: { type: Type.STRING, description: "Pertanyaan utama yang jelas dan menantang" },
+      passage: { type: Type.STRING, description: "Teks bacaan atau stimulus (Wajib untuk Literasi dan soal cerita Numerasi)" },
+      options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "4-5 pilihan jawaban yang masuk akal (Hanya untuk PG/MCMA)" },
       correctAnswer: { type: Type.STRING, description: "Format: 'A' untuk PG, JSON array string untuk MCMA, atau JSON object string untuk Kategori" },
       categories: { 
         type: Type.ARRAY, 
@@ -47,9 +47,9 @@ const QUESTION_SCHEMA = {
         },
         description: "Hanya untuk tipe Kategori"
       },
-      explanation: { type: Type.STRING, description: "Penjelasan rasional AI" }
+      explanation: { type: Type.STRING, description: "Penjelasan mendalam mengapa jawaban tersebut benar" }
     },
-    required: ["id", "subject", "topic", "type", "text", "correctAnswer", "cognitiveLevel"]
+    required: ["id", "subject", "topic", "type", "text", "correctAnswer", "cognitiveLevel", "explanation"]
   }
 };
 
@@ -59,36 +59,36 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
   const mathTopics = selectedTopics.math.length > 0 ? selectedTopics.math.join(", ") : "Bilangan, Aljabar, Geometri";
   const indTopics = selectedTopics.indonesian.length > 0 ? selectedTopics.indonesian.join(", ") : "Literasi Teks Informasi & Sastra";
 
-  // Prompt yang jauh lebih ketat untuk hasil profesional dengan jumlah 30 soal
   const prompt = `
-    Anda adalah Pakar Asesmen Nasional (ANBK). 
-    Tugas: Buat 30 soal Tes Kemampuan Akademik (TKA) SD kelas 5-6 yang berkualitas tinggi.
+    Anda adalah Pakar Asesmen Nasional (ANBK) tingkat Internasional.
+    Tugas: Buat 30 soal Tes Kemampuan Akademik (TKA) SD kelas 5-6 yang VALID, EFEKTIF, dan BERKUALITAS TINGGI.
     
     KOMPOSISI:
     - 15 Soal Numerasi (Matematika) tentang: ${mathTopics}
     - 15 Soal Literasi (Bahasa Indonesia) tentang: ${indTopics}
 
     ATURAN KETAT FORMAT JAWABAN:
-    1. Jika 'Pilihan Ganda', 'correctAnswer' harus berupa satu huruf besar: "A" atau "B" dsb.
-    2. Jika 'Pilihan Ganda Kompleks (MCMA)', 'correctAnswer' harus berupa string array JSON: ["A", "C"]
-    3. Jika 'Pilihan Ganda Kompleks (Kategori)', 'correctAnswer' harus berupa string object JSON: {"0": "Benar", "1": "Salah"}
+    1. Jika 'Pilihan Ganda', 'correctAnswer' harus satu huruf besar: "A", "B", "C", atau "D".
+    2. Jika 'Pilihan Ganda Kompleks (MCMA)', 'correctAnswer' harus string array JSON valid: ["A", "C"]
+    3. Jika 'Pilihan Ganda Kompleks (Kategori)', 'correctAnswer' harus string object JSON valid: {"0": "Benar", "1": "Salah"}
     
-    KUALITAS:
-    - Gunakan Bahasa Indonesia Baku.
-    - Soal Literasi WAJIB memiliki 'passage' yang relevan dan mendalam.
-    - Soal Numerasi harus memiliki konteks kehidupan nyata (Higher Order Thinking Skills/HOTS).
-    - Variasikan tingkat kognitif antara L1 (Pemahaman), L2 (Penerapan), dan L3 (Penalaran).
+    KUALITAS & VALIDASI:
+    - Pastikan semua soal memiliki tingkat kognitif yang bervariasi (L1-L3).
+    - Soal Literasi HARUS memiliki 'passage' stimulus yang relevan.
+    - Soal Numerasi HARUS menggunakan konteks dunia nyata yang logis.
+    - Hindari jawaban yang ambigu.
+    - Sertakan penjelasan (explanation) yang logis untuk setiap soal.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", // Menggunakan model Pro untuk kualitas TKA terbaik
+      model: "gemini-3-flash-preview", // Menggunakan Flash untuk kecepatan maksimal sesuai request
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         responseSchema: QUESTION_SCHEMA,
-        temperature: 0.4,
-        thinkingConfig: { thinkingBudget: 6000 } // Budget ditingkatkan untuk 30 soal agar stabil
+        temperature: 0.3, // Menjaga konsistensi dan validitas output
+        thinkingConfig: { thinkingBudget: 4000 } // Budget yang cukup untuk penalaran soal SD tanpa mengorbankan kecepatan
       }
     });
 
@@ -103,7 +103,6 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
     return results.map((q: any) => {
         let finalAnswer = q.correctAnswer;
         
-        // Proteksi parsing untuk field correctAnswer yang mungkin dikirim AI dalam bentuk string terenkapsulasi
         if (typeof q.correctAnswer === 'string') {
           const trimmed = q.correctAnswer.trim();
           if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
@@ -115,7 +114,6 @@ export async function generateTKAQuestions(selectedTopics: TopicSelection): Prom
           }
         }
 
-        // Normalisasi Subjek untuk UI konsistensi
         const subj = (q.subject || "").toLowerCase();
         const normalizedSubject = (subj.includes('mat') || subj.includes('num')) ? 'Matematika' : 'Bahasa Indonesia';
 

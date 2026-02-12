@@ -134,7 +134,7 @@ const App: React.FC = () => {
     
     if (authMode === 'register') {
       if (!authForm.user || !authForm.pass || !authForm.phone) return setSysError("Complete credentials required.");
-      if (registry.some((u: any) => u.user === authForm.user)) return setSysError("Node ID already assigned.");
+      if (registry.some((u: any) => u.user === authForm.user)) return setSysError("User ID already assigned.");
       if (registry.some((u: any) => u.phone === authForm.phone)) return setSysError("Phone already linked to a Node.");
       
       registry.push(authForm);
@@ -442,6 +442,25 @@ const App: React.FC = () => {
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                       <button onClick={() => navigate('/history')} className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black text-sm uppercase shadow-3xl">Log History</button>
                       <button onClick={() => navigate('/config')} className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black text-sm uppercase border border-white/10">Try Again</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-20 space-y-12 text-left">
+                    <div className="flex items-center gap-6 px-4">
+                      <div className="w-1.5 h-10 bg-blue-600 rounded-full"></div>
+                      <h3 className="text-3xl font-black text-white italic tracking-tight">Review Assessment</h3>
+                    </div>
+                    <div className="space-y-10">
+                      {questions.map((q, i) => (
+                        <QuestionCard 
+                          key={i} 
+                          index={i} 
+                          question={q} 
+                          showAnswers={true} 
+                          interactive={false} 
+                          currentAnswer={userAnswers[i]} 
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>

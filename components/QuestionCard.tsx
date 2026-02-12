@@ -262,7 +262,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                               disabled={!interactive}
                               onClick={() => interactive && handleCategoryChange(i, cat)}
                               aria-pressed={currentAnswer?.[i] === cat}
-                              aria-label={`Pilih ${cat} untuk: ${item.statement}`}
+                              aria-label={`Pilih ${cat} for: ${item.statement}`}
                               className={`px-6 py-3 sm:px-8 py-4 rounded-xl sm:rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 active:scale-90 ${
                                 currentAnswer?.[i] === cat 
                                 ? 'bg-blue-600 text-white shadow-[0_10px_30px_rgba(37,99,235,0.5)] translate-y-[-4px] border-2 border-blue-400 animate-in zoom-in-95 duration-200 ring-4 ring-blue-500/20' 
